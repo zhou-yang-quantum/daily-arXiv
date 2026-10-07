@@ -4,19 +4,23 @@ The attempted request in a conversation using the published cloud environment re
 
 The environment passed access checks for research and publishing. This verifies the execution environment, not a scheduler. Official [scheduled-task documentation](https://learn.chatgpt.com/docs/automations) describes scheduled web tasks and connected tools, but does not establish that a task can be bound to this published Codex Cloud environment or inherit its private credential.
 
-The user subsequently supplied screenshots of the manual Schedule a task dialog. It supports Instructions, Weekdays, 02:00 Eastern, an Eastern Time zone, Run on this computer, and Start each run in new chat, but has no environment selector. This establishes that a schedule can be created manually even when the agent has no scheduling tool. It does not establish which repository or credential the scheduled runtime receives.
+The user subsequently supplied screenshots of the manual Schedule a task dialog. It supports Instructions, Weekdays, 02:00 Eastern, an Eastern Time zone, Run on this computer, and Start each run in new chat, but has no environment selector. The dialog is opened from the separate Scheduled tab, not from the cloud conversation. The earlier suggestion to open it from a cloud chat was not supported by this interface.
+
+The one-time scheduled-context check **failed**. The scheduled run exposed a cloud environment ID and Python 3.12.14, but had no repository checkout, publisher script, research prompt, or ARXIV_GITHUB_TOKEN. It stopped before research or publishing, and the user reports that the verification task was disabled. This shows cloud execution without the required prepared environment; a cloud environment ID alone is not evidence of binding to the user's published setup. No working binding method has been verified in this account's interface or found in the official documentation.
 
 ## Verify manual scheduling
 
-1. Open an ordinary cloud task with the published daily-arXiv environment selected, then open Schedule a task from that chat. Using this chat as the origin is a test of context retention, not a documented guarantee that the scheduler inherits the environment.
-2. Paste the complete [one-time scheduled-context check](../prompts/cloud-schedule-check.md) into Instructions. Set Repeat task off and choose a near-future time. Keep Run on this computer off. Keep Start each run in new chat off for this first check, so the run returns to this chat as described by the scheduling documentation.
-3. Save the task and inspect the actual scheduled run's report. Earlier manual environment access checks do not prove that this scheduled run has the same resources. Missing scripts, Python, or private-token access means the daily publisher cannot run in that scheduled context. Naming the environment in a prompt does not attach it or grant credential access.
+The [one-time scheduled-context check](../prompts/cloud-schedule-check.md) documents the check that was run. Do not repeat it with the same configuration: the missing binding must be resolved first. Earlier manual environment access checks do not prove that scheduled runs have the same resources. Naming the environment in a prompt does not attach it or grant credential access. Ordinary cloud tasks explicitly started in the published environment remain useful for manual research, publishing, and development.
 
 ## Daily instructions after a successful check
 
-Use the complete [daily scheduled-run prompt](../prompts/scheduled-daily-run.md) in the manual Instructions field. It verifies required runtime resources before loading the research and delivery instructions from the checkout. Set Repeat task on, Repeat Weekdays, Time 02:00 Eastern, and Time zone Eastern Time (`America/New_York`). Keep Run on this computer off. For the initial daily trial, keep Start each run in new chat off; a fresh-chat schedule can be tested separately once environment access works, to avoid growing context over time. Do not create a duplicate recurring task if one already exists.
+The [daily scheduled-run prompt](../prompts/scheduled-daily-run.md) is prepared for a runtime with the checkout and private credential. **It is not functional in the scheduled runtime that was tested.** Use it only if an execution route actually provides those resources. The desired cadence remains weekdays at 02:00 America/New_York. Do not create another identical verification task or enable daily research in the failed context.
 
 After a supported scheduler actually saves the task, inspect it in Scheduled and verify the cloud environment and timing. Review the first scheduled cloud research-and-publication run and its GitHub Pages deployment before disabling the original task. Do not rerun environment setup merely to address a missing scheduling tool.
+
+## Alternative architecture
+
+LaserWong uses GitHub Actions for both scheduling and execution, independently of ChatGPT tasks or Codex Cloud environments. See [the source-based comparison](reference-pipeline.md). This is a viable architecture for a replacement collector, but model API calls would be separately billed and are not currently configured in daily-arXiv. Keep the original ChatGPT task active. No paid API collector or daily GitHub research schedule has been enabled.
 
 For an interface with advanced recurrence controls, the intended rule is:
 

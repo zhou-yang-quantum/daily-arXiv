@@ -38,6 +38,23 @@ class PublisherTests(unittest.TestCase):
         api.assert_not_called()
 
     @patch('tools.publish_digest.api_request')
+    def test_reports_actual_paper_count_on_delivery_and_redelivery(self, api):
+        text = example_digest(20, include_priority=False)
+        api.side_effect = [None, {'commit': {'sha': 'a' * 40}}]
+        self.assertEqual(publish(text, 'test-credential')['papers'], 20)
+        api.side_effect = None
+        api.return_value = {'encoding': 'base64', 'content': base64.b64encode(text.encode()).decode()}
+        self.assertEqual(publish(text, 'test-credential')['papers'], 20)
+        self.assertEqual(api.call_count, 3)
+
+    @patch('tools.publish_digest.api_request')
+    def test_out_of_range_counts_never_reach_github(self, api):
+        for count in (9, 21):
+            with self.subTest(count=count), self.assertRaises(ValueError):
+                publish(example_digest(count, include_priority=False), 'test-credential')
+        api.assert_not_called()
+
+    @patch('tools.publish_digest.api_request')
     def test_date_check_does_not_return_digest_content(self, api):
         api.return_value = {'content': 'a large archived selection'}
         self.assertEqual(check_date('2026-10-06', 'test-credential'), {'date': '2026-10-06', 'status': 'exists'})

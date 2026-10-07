@@ -5,9 +5,9 @@ from pathlib import Path
 import datetime
 
 if __package__:
-    from .import_digest import parse_digest
+    from .import_digest import parse_digest, MIN_PAPERS, MAX_PAPERS
 else:
-    from import_digest import parse_digest
+    from import_digest import parse_digest, MIN_PAPERS, MAX_PAPERS
 
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
@@ -27,11 +27,13 @@ def load_archive(folder, incoming_folder=None):
         if filename.stem != date or day["title"] != f"arXiv-{date}":
             raise ValueError(f"{filename.name}: date/title mismatch")
         papers = day["papers"]
-        if len(papers) != 10 or [p["rank"] for p in papers] != list(range(1, 11)):
-            raise ValueError(f"{date}: expected ten ranked papers")
-        if len({p["id"] for p in papers}) != 10:
+        count = len(papers)
+        expected_ranks = list(range(1, count + 1))
+        if not MIN_PAPERS <= count <= MAX_PAPERS or [p["rank"] for p in papers] != expected_ranks:
+            raise ValueError(f"{date}: expected 10–20 consecutively ranked papers")
+        if len({p["id"] for p in papers}) != count:
             raise ValueError(f"{date}: duplicate paper IDs")
-        if sorted(day["reading_order"]) != list(range(1, 11)):
+        if sorted(day["reading_order"]) != expected_ranks:
             raise ValueError(f"{date}: invalid reading order")
         for paper in papers:
             import re

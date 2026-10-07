@@ -1,10 +1,12 @@
-"""Import a dated ChatGPT top-ten Markdown digest into the portable archive."""
+"""Import a dated ChatGPT digest of 10–20 ranked papers into the archive."""
 import argparse
 import json
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+MIN_PAPERS = 10
+MAX_PAPERS = 20
 TOPICS = {
     "Quantum field theory": r"field theor|worldline|instantons|matrix.model|topological order|fusion",
     "Non-equilibrium": r"dissipat|dynamics|chaos|Krylov|OTOC|thermal|non.equilibrium",
@@ -39,40 +41,50 @@ def parse_digest(text):
     for index, header in enumerate(headers):
         chunk = text[header.end():headers[index + 1].start() if index + 1 < len(headers) else len(text)].strip()
         if index == len(headers) - 1:
-            # Reading advice belongs to the day, not to paper ten.
+            # Reading advice belongs to the day, not to the final paper.
             parts = re.split(r"\n(?=My reading order|Suggested reading order|## Reading order)", chunk, maxsplit=1)
             chunk = parts[0]
             if len(parts) == 2:
                 day_notes = clean(parts[1].split("\n---")[0])
         title = re.search(r"^###\s+(.+)$", chunk, re.M)
-        arxiv = re.search(r"arXiv:\s*([a-z-]+/\d{7}|\d{4}\.\d{4,5})(?:v\d+)?", chunk, re.I)
-        priority = re.search(r"\*\*Priority:\s*(.*?)\*\*", chunk)
+        metadata = re.search(r"^\*\*([^\n]*arXiv:[^\n]*?)\*\*[ \t]*$", chunk, re.M | re.I)
+        arxiv = re.search(r"arXiv:\s*([a-z-]+/\d{7}|\d{4}\.\d{4,5})(?:v\d+)?\b", metadata.group(1), re.I) if metadata else None
+        # Older archived digests may contain a verdict. New ones omit it.
+        priority = re.search(r"^\*\*Priority:\s*(.*?)\*\*[ \t]*$", chunk, re.M)
         background = re.search(r"\*\*Background[.:]?\*\*", chunk)
         why = re.search(r"\*\*Why it matters(?: for you)?[.:]?\*\*", chunk)
-        if not all((title, arxiv, priority, background, why)):
-            raise ValueError(f"Item {header.group(2)} is missing a title, arXiv ID, priority, background, or relevance section")
-        if not (priority.end() < background.start() < why.start()):
+        if not all((title, metadata, arxiv, background, why)):
+            raise ValueError(f"Item {header.group(2)} is missing a title, arXiv metadata, background, or relevance section")
+        if not (title.end() < metadata.start() < metadata.end() < background.start() < why.start()):
             raise ValueError("Summary, background, and relevance must appear in that order")
-        metadata = chunk[title.end():priority.start()].strip().strip("*").strip()
-        authors = re.sub(r"\s*[—–-]?\s*arXiv:.*", "", metadata, flags=re.I).strip()
-        summary = clean(chunk[priority.end():background.start()])
+        if priority and not (metadata.end() <= priority.start() < priority.end() < background.start()):
+            raise ValueError("Legacy priority line must precede the summary")
+        authors = re.sub(r"\s*[—–-]?\s*arXiv:.*", "", metadata.group(1), flags=re.I).strip()
+        summary = clean(chunk[priority.end() if priority else metadata.end():background.start()])
         relevance = clean(chunk[why.end():])
         relevance = re.sub(r"\n*\[arXiv[^\]]*\]\(https://arxiv.org/abs/[^)]+\)\s*$", "", relevance).strip()
         tags = [tag for tag, pattern in TOPICS.items() if re.search(pattern, title.group(1) + " " + summary, re.I)]
-        papers.append({
+        paper = {
             "rank": int(header.group(2)), "id": arxiv.group(1), "title": title.group(1),
-            "authors": authors, "priority": priority.group(1), "topics": tags,
+            "authors": authors, "topics": tags,
             "summary": summary, "background": clean(chunk[background.end():why.start()]),
             "why": relevance, "url": f"https://arxiv.org/abs/{arxiv.group(1)}",
-        })
-    if [p["rank"] for p in papers] != list(range(1, 11)):
-        raise ValueError("Expected exactly ten items ranked 1 through 10")
-    if len({p["id"] for p in papers}) != 10:
+        }
+        if not all(paper[key] for key in ("summary", "background", "why")):
+            raise ValueError(f"Item {header.group(2)} has an empty explanatory section")
+        if priority:
+            paper["priority"] = priority.group(1)
+        papers.append(paper)
+    count = len(papers)
+    expected_ranks = list(range(1, count + 1))
+    if not MIN_PAPERS <= count <= MAX_PAPERS or [p["rank"] for p in papers] != expected_ranks:
+        raise ValueError("Expected 10–20 items with consecutive ranks starting at 1")
+    if len({p["id"] for p in papers}) != count:
         raise ValueError("Duplicate paper IDs in digest")
     order_match = re.search(r"reading order.*?\*\*(.*?)\*\*", day_notes, re.I)
-    order = [int(n) for n in re.findall(r"\d+", order_match.group(1))] if order_match else list(range(1, 11))
-    if sorted(order) != list(range(1, 11)):
-        order = list(range(1, 11))
+    order = [int(n) for n in re.findall(r"\d+", order_match.group(1))] if order_match else expected_ranks
+    if sorted(order) != expected_ranks:
+        order = expected_ranks
     return {
         "date": date, "title": f"arXiv-{date}",
         "overview": clean(text[date_match.end():headers[0].start()]),

@@ -14,7 +14,9 @@ During setup, the ChatGPT GitHub connection could read this repository but retur
 
 Use the credential-based cloud publisher unless write access in the intended task has actually been verified. The current conversation has no tool for creating the cloud environment or editing the scheduled task; those are one-time account setup steps, not daily copy/paste work.
 
-The Python publisher was successfully tested using the existing local GitHub CLI login, without printing or saving its credential. It delivered `incoming/2026-10-06.md` in commit `2946b0ec548261db86a051673d297c6665c68db5`; [the deployment succeeded](https://github.com/zhou-yang-quantum/daily-arXiv/actions/runs/37569877958). The cloud environment's separate identity still needs its own write test.
+The Python publisher was successfully tested using the existing local GitHub CLI login, without printing or saving its credential. It delivered `incoming/2026-10-06.md` in commit `2946b0ec548261db86a051673d297c6665c68db5`; [the deployment succeeded](https://github.com/zhou-yang-quantum/daily-arXiv/actions/runs/37569877958).
+
+The user subsequently reported successful cloud credential, repository read, temporary write/read/delete, arXiv, and web-search checks. A full cloud research-and-publication run and daily scheduling remain untested.
 
 ## One-time setup
 
@@ -34,6 +36,8 @@ The existing October 6 raw digest contains 22,554 characters and measures 5,434 
 
 Generating it again as a full chat response after writing the cloud file would duplicate roughly that much visible output. The supplied prompt writes the full digest once, lets Python upload the bytes, and responds with a short link. The script returns only status, date, count, and commit metadata.
 
+The selection defaults to ten papers and may expand to twenty when warranted. Extra summaries add model output, so the prompt requires a clear reason to include additional papers rather than filling the maximum every day. Ranking and the daily overview replace redundant priority verdicts.
+
 Research context, reasoning, tool instructions, and tool results add usage. On Plus, cloud Work/Codex usage can consume more allowance than a plain Chat task; there is no fixed token-to-Plus-quota conversion. Compare the usage dashboard before and after a representative run. Do not infer subscription allowance consumption from API dollar prices. Official usage guidance: https://learn.chatgpt.com/docs/pricing.
 
 The Python parser, static build, Docker preview, and Pages deployment consume zero AI tokens. No model calls or API charges are configured in the publishing workflow.
@@ -41,7 +45,7 @@ The Python parser, static build, Docker preview, and Pages deployment consume ze
 ## Delivery behavior
 
 - New Markdown files in `incoming/` are validated and included at build time. No generated JSON commit or second agent run is needed.
-- Invalid dates, incomplete rankings, missing explanation sections, duplicate IDs, and unsafe arXiv links fail the build. The last successful deployment stays online.
+- Counts outside 10–20, invalid dates, incomplete rankings, missing explanation sections, duplicate IDs, and unsafe arXiv links fail the build. The last successful deployment stays online.
 - Existing dates are protected. Matching redelivery is idempotent; existing reviewed JSON topic tags are preserved. Conflicting content fails instead of silently replacing a published explanation.
 - The daily task checks just its own date and makes one write. It does not fetch the entire archive into model context or modify website code.
 - This repository has no independent daily research schedule. The cloud task triggers deployment by creating a digest file.

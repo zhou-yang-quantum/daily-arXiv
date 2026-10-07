@@ -1,6 +1,6 @@
 # daily-arXiv
 
-A personal arXiv reading archive: ten ranked papers per day, with a summary, background and motivation, and why each paper matters.
+A personal arXiv reading archive: usually ten ranked papers per day, expanding up to twenty when warranted, with a summary, background and motivation, and why each paper matters.
 
 **Website:** https://zhou-yang-quantum.github.io/daily-arXiv/
 
@@ -77,7 +77,6 @@ Optional daily overview.
 
 ### Exact paper title
 **Authors — arXiv:YYMM.NNNNN**
-**Priority: high**
 
 Summary paragraphs.
 
@@ -86,7 +85,7 @@ Summary paragraphs.
 **Why it matters for you:** Personalized relevance.
 ```
 
-Repeat for items 1–10. The importer rejects missing sections, mismatched dates, duplicate papers, and incomplete rankings. An existing date is protected unless you explicitly pass `--replace`.
+Repeat for items 1–N, with 10–20 papers and consecutive ranks. Use numerical ranking and a daily overview without priority verdicts. The importer rejects missing sections, mismatched dates, duplicate papers, incomplete rankings, and counts outside 10–20. Legacy entries with priority lines remain importable. An existing date is protected unless you explicitly pass `--replace`.
 
 Structured JSON entries can also be added directly. Use the existing entry as the schema. `tools/build.py` validates dates, sections, rankings, and arXiv links before publication. Topic tags are an editorial aid; the Markdown importer assigns initial tags with keyword rules, which can be refined in the JSON.
 
@@ -94,7 +93,7 @@ For fully automatic collection, the intended scheduled task needs a tested write
 
 ## Preferences
 
-`preferences.json` records the user's priorities and exclusions. `prompts/daily-selection.md` preserves the supplied scheduled-task prompt. The website displays these criteria for reference; changing them alone does not rerank existing entries or modify the ChatGPT task.
+`preferences.json` records the user's priorities, exclusions, and selection size. `prompts/daily-selection.md` contains the current research prompt. The website displays these criteria for reference; changing them alone does not rerank existing entries or modify the ChatGPT task.
 
 ## Publish
 

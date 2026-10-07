@@ -51,6 +51,7 @@ def check_date(date, token):
 def publish(text, token):
     digest = parse_digest(text)
     date = digest["date"]
+    count = len(digest["papers"])
     existing = api_request("GET", date, token)
     if existing is not None:
         if existing.get("encoding") != "base64":
@@ -58,7 +59,7 @@ def publish(text, token):
         previous = base64.b64decode(existing["content"]).decode("utf-8")
         if previous.rstrip() != text.rstrip():
             raise ValueError(f"{date} already exists with different content; refusing to overwrite it")
-        return {"date": date, "papers": 10, "status": "already-delivered"}
+        return {"date": date, "papers": count, "status": "already-delivered"}
     result = api_request("PUT", date, token, {
         "message": f"Add arXiv-{date} selection",
         "content": base64.b64encode(text.encode("utf-8")).decode("ascii"),
@@ -67,7 +68,7 @@ def publish(text, token):
     if not result.get("commit", {}).get("sha"):
         raise RuntimeError("GitHub did not confirm a commit; publication is unverified")
     return {
-        "date": date, "papers": 10, "status": "publication-queued",
+        "date": date, "papers": count, "status": "publication-queued",
         "commit": result["commit"]["sha"],
         "website": f"https://zhou-yang-quantum.github.io/daily-arXiv/#date={date}",
     }

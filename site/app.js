@@ -87,7 +87,7 @@ function applyHash() {
   $('#search-input').value = state.query;
   render();
   const rank = Number(params.get('paper'));
-  if (rank >= 1 && rank <= 10) openPaper(state.date, rank);
+  if (currentDay().papers.some((paper) => paper.rank === rank)) openPaper(state.date, rank);
 }
 function selectDate(date) {
   state.date = date; state.query = ''; state.topic = ''; state.savedOnly = false;
@@ -130,7 +130,7 @@ function renderPaper(day, paper) {
   card.innerHTML = '<div class="paper-header"><span class="paper-rank">' + String(paper.rank).padStart(2, '0') + '</span><div class="paper-content"><div class="paper-label-row"><span class="paper-label">' + label + '</span><button class="bookmark-button" aria-label="' + (saved.has(paper.id) ? 'Unsave' : 'Save') + ' item ' + paper.rank + '" aria-pressed="' + saved.has(paper.id) + '" data-action="save">' + icons.bookmark + '</button></div><h3></h3><p class="authors"></p><div class="paper-tags"></div></div></div><details class="paper-detail"' + (!state.compact ? ' open' : '') + '><summary><span class="collapsed-label">Read the briefing</span><span class="expanded-label">Close briefing</span></summary><h4 class="section-label">SUMMARY</h4><div class="prose paper-summary"></div><section class="background-note"><h4 class="section-label">BACKGROUND & MOTIVATION</h4><div class="prose paper-background"></div></section><section class="why-note"><h4 class="section-label">WHY IT MATTERS FOR YOU</h4><div class="prose paper-why"></div></section><div class="paper-footer"><div class="paper-links"><a href="' + paper.url + '" target="_blank" rel="noopener noreferrer">Read on arXiv ' + icons.arrow + '</a><a class="secondary" href="https://arxiv.org/pdf/' + paper.id + '" target="_blank" rel="noopener noreferrer">PDF ' + icons.arrow + '</a><a class="secondary permalink" href="#date=' + day.date + '&paper=' + paper.rank + '" aria-label="Link to ' + label + '">Link</a></div><button class="read-button" aria-pressed="' + read.has(key) + '" data-action="read">' + icons.check + '<span>' + (read.has(key) ? 'Read' : 'Mark as read') + '</span></button></div></details>';
   card.querySelector('h3').textContent = paper.title; math(card.querySelector('h3'));
   card.querySelector('.authors').textContent = (paper.authors ? paper.authors + '  ·  ' : '') + 'arXiv:' + paper.id;
-  card.querySelector('.paper-tags').innerHTML = '<span class="priority-tag">' + escapeHTML(paper.priority) + '</span>' + paper.topics.slice(0, 3).map((topic) => '<span class="paper-tag">' + escapeHTML(topic) + '</span>').join('');
+  card.querySelector('.paper-tags').innerHTML = paper.topics.slice(0, 3).map((topic) => '<span class="paper-tag">' + escapeHTML(topic) + '</span>').join('');
   markdown(card.querySelector('.paper-summary'), paper.summary);
   markdown(card.querySelector('.paper-background'), paper.background);
   markdown(card.querySelector('.paper-why'), paper.why);
@@ -144,7 +144,7 @@ function render() {
   $('#page-title').textContent = state.savedOnly ? 'Ideas to come back to.' : filtering ? 'Follow your curiosity.' : day.title;
   $('#digest-kicker').textContent = state.savedOnly ? 'YOUR PERSONAL READING SHELF' : filtering ? 'EXPLORE THE ARCHIVE' : 'YOUR PERSONAL RESEARCH BRIEFING';
   $('#date-subtitle').textContent = filtering ? 'Across ' + state.archive.days.length + ' archived selection' + (state.archive.days.length === 1 ? '' : 's') : formatDate(day.date) + ' · ' + (day === state.archive.days[0] ? 'Latest selection' : 'From the archive');
-  $('#hero-description').textContent = state.savedOnly ? 'Keep the ideas that caught your attention. Pick up where you left off.' : filtering ? 'Find a familiar concept, an unfamiliar connection, or your next deep dive.' : 'Ten papers. A wider perspective. Selected for the physics behind the result.';
+  $('#hero-description').textContent = state.savedOnly ? 'Keep the ideas that caught your attention. Pick up where you left off.' : filtering ? 'Find a familiar concept, an unfamiliar connection, or your next deep dive.' : day.papers.length + ' papers. A wider perspective. Selected for the physics behind the result.';
   $('#paper-total').textContent = results.length + (results.length === 1 ? ' paper' : ' papers');
   $('#source-label').textContent = 'Summary · Background · Why it matters';
   $('#latest-button').classList.toggle('active', !state.savedOnly);

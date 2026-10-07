@@ -9,6 +9,7 @@ test('dated digest, readable math, and complete paper sections', async ({ page }
   await expect(page.locator('.paper-card')).toHaveCount(10);
   await expect(page.locator('.paper-background')).toHaveCount(10);
   await expect(page.locator('.paper-why')).toHaveCount(10);
+  await expect(page.locator('.priority-tag')).toHaveCount(0);
   await expect(page.locator('.katex').first()).toBeVisible();
   expect(await page.locator('.katex-error').count()).toBe(0);
   expect(await page.locator('.paper-summary').first().textContent()).not.toContain('ARXIVMATHPLACEHOLDER');
@@ -97,4 +98,43 @@ test('imported Markdown cannot run HTML or javascript links', async ({ page }) =
   await expect(page.locator('.paper-card')).toHaveCount(10);
   expect(await page.evaluate(() => Boolean(window.badImport))).toBe(false);
   await expect(page.locator('.paper-summary a').first()).not.toHaveAttribute('href', /javascript:/);
+});
+
+test('twenty-paper days support mobile reading order and direct links without verdicts', async ({ page }) => {
+  await page.route('**/data/archive.json', async (route) => {
+    const response = await route.fetch();
+    const data = await response.json();
+    const day = data.days[0];
+    const additional = structuredClone(day.papers).map((paper, index) => {
+      paper.rank = index + 11;
+      paper.id = `2610.${String(paper.rank).padStart(5, '0')}`;
+      paper.title = `Additional paper ${paper.rank}`;
+      paper.url = `https://arxiv.org/abs/${paper.id}`;
+      delete paper.priority;
+      return paper;
+    });
+    day.papers.push(...additional);
+    day.reading_order = day.papers.map((paper) => paper.rank);
+    await route.fulfill({ response, json: data });
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/#date=2026-10-06&paper=20');
+  const card = page.locator('#paper-2026-10-06-20');
+  await expect(card).toBeInViewport();
+  await expect(page.locator('.paper-card')).toHaveCount(20);
+  await expect(page.locator('.paper-detail[open]')).toHaveCount(20);
+  await expect(page.locator('.priority-tag')).toHaveCount(0);
+  await expect(page.locator('.hero-description')).toContainText('20 papers.');
+  await expect(page.locator('.reading-order a')).toHaveCount(20);
+  await page.getByRole('button', { name: 'Latest', exact: true }).click();
+  await page.locator('.reading-order a').filter({ hasText: /^20$/ }).click();
+  await expect(card).toBeInViewport();
+  await page.getByRole('button', { name: 'Save item 20', exact: true }).click();
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Unsave item 20', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Latest', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await page.screenshot({ path: '.cache/mobile-20.png', fullPage: false });
+  await page.setViewportSize({ width: 320, height: 700 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

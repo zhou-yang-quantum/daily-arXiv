@@ -1,0 +1,8 @@
+{
+  "prioritize": ["Quantum field theory", "Non-equilibrium physics", "Quantum error correction", "Quantum simulation", "Quantum algorithms", "Exactly solvable models"],
+  "exclude": ["Materials", "Quantum chemistry", "Bilayer graphene", "TMDs", "High-temperature superconductivity", "Most experiments unless they demonstrate an important theoretical principle", "Overly mathematical string theory", "Overly computer-science-heavy quantum algorithms"],
+  "principles": ["Broaden beyond topics closely related to my own publications", "Rank by conceptual interest and personal relevance", "Explain unfamiliar concepts with brief background and motivation"],
+  "format": "Summary, background, and why it matters for each of ten ranked papers",
+  "date_title": "arXiv-YYYY-MM-DD",
+  "item_label": "arXiv-YYYY-MM-DD — Item N"
+}

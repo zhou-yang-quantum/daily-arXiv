@@ -9,7 +9,7 @@ FROM python:3.12-alpine AS build
 WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY tools/ ./tools/
-COPY tests/test_archive.py ./tests/test_archive.py
+COPY tests/*.py ./tests/
 COPY content/ ./content/
 COPY incoming/ ./incoming/
 COPY site/ ./site/

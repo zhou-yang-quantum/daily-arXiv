@@ -52,7 +52,7 @@ The website is a static HTML/CSS/JavaScript application. Markdown and KaTeX are 
 
 The repository now accepts a single Markdown delivery at `incoming/YYYY-MM-DD.md`. GitHub Actions automatically validates it, incorporates it into the archive, and publishes the site. No manual conversion or generated-JSON commit is needed.
 
-For unattended delivery, use the cloud task prompt in [prompts/cloud-daily-selection.md](prompts/cloud-daily-selection.md) and the one-time setup in [docs/daily-pipeline.md](docs/daily-pipeline.md). **The existing ChatGPT schedule has not been changed, and no replacement schedule has been created by this repository.** GitHub write access must work in the intended scheduled cloud chat.
+For unattended delivery, use the cloud task prompt in [prompts/cloud-daily-selection.md](prompts/cloud-daily-selection.md) and the one-time setup in [docs/daily-pipeline.md](docs/daily-pipeline.md). The Python publisher handles the GitHub upload without model calls. **The existing ChatGPT schedule has not been changed, and no replacement schedule has been created by this repository.** The cloud environment needs a repository-scoped GitHub credential; the current ChatGPT GitHub connector rejected write actions during testing.
 
 The existing ChatGPT task remains the selection source until the replacement cloud task is verified. This repository does not retrieve private ChatGPT conversations. To import a digest manually as an alternative:
 

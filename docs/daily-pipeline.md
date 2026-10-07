@@ -2,29 +2,37 @@
 
 ## Recommended route
 
-Use one cloud ChatGPT Work scheduled task that researches and publishes the digest with the GitHub connector:
+Use one scheduled Codex Cloud task (or cloud Work environment with Python and the same service access) that researches and publishes through the small Python publisher:
 
 `arXiv → cloud task → incoming/YYYY-MM-DD.md → GitHub Actions → website`
 
-The task needs GitHub file-write access to `zhou-yang-quantum/daily-arXiv`. It does not need a local checkout, your SSH key, an API key, Docker, or an awake computer. Scheduling and connector availability must be checked in the intended ChatGPT account/chat; access from another conversation does not prove access there.
+The task needs a cloud checkout with Python and GitHub contents-write access to `zhou-yang-quantum/daily-arXiv`. It does not need your computer's checkout, SSH key, Docker, or a model API key. The publishing script uses GitHub's REST API; it makes no model calls.
+
+## Verified connection limit
+
+During setup, the ChatGPT GitHub connection could read this repository but returned HTTP 403 `Resource not accessible by integration` for both file creation and issue creation. The authenticated user's `push` flag did not establish the integration's write scope. No issue was created. Reconnecting alone is not assumed to fix this restriction.
+
+Use the credential-based cloud publisher unless write access in the intended task has actually been verified. The current conversation has no tool for creating the cloud environment or editing the scheduled task; those are one-time account setup steps, not daily copy/paste work.
+
+The Python publisher was successfully tested using the existing local GitHub CLI login, without printing or saving its credential. It delivered `incoming/2026-10-06.md` in commit `2946b0ec548261db86a051673d297c6665c68db5`; [the deployment succeeded](https://github.com/zhou-yang-quantum/daily-arXiv/actions/runs/37569877958). The cloud environment's separate identity still needs its own write test.
 
 ## One-time setup
 
-1. In ChatGPT on the web, use Work/cloud execution and enable the GitHub connection for this repository. Cloud Work is documented for scheduled research that runs while your computer is asleep: https://learn.chatgpt.com/docs/get-started-with-work.
-2. Use the full prompt in `prompts/cloud-daily-selection.md`. It contains the research preferences, delivery path, exact format, retry rules, and usage limits. Match the time of the existing daily task, with timezone America/Chicago. The prompt itself does not create a schedule.
-3. Test the GitHub file-writing action once in that cloud chat before enabling recurring delivery. The October 6 incoming file is reserved for the repository-side integration test; use its existence to verify read access, and test a genuinely new complete digest for a new date when appropriate.
-4. Confirm the task actually runs in the cloud and that a successful write triggers a successful `Publish daily-arXiv` workflow. A queued workflow is not proof of publication.
-5. Once the new scheduled task is confirmed working, disable the old research task to avoid producing the same selection twice. This project does not change your existing task or schedule.
+1. Create/select a Codex Cloud environment for `zhou-yang-quantum/daily-arXiv`. Use [the setup prompt](cloud-setup-prompt.md) to keep it focused. It needs Python 3.10+ and access to `arxiv.org`, `export.arxiv.org`, and `api.github.com`, plus any research/search services used by the task. The publishing step needs no npm install or website build. Cloud environments run while your computer is asleep: https://learn.chatgpt.com/docs/environments/cloud-environments.
+2. Configure `ARXIV_GITHUB_TOKEN` as a private cloud credential. If the environment's existing authorized GitHub identity cannot supply a usable API credential, create a fine-grained GitHub token scoped to **this repository only**, with **Contents: read and write**, and store it in the cloud environment's personal vault/network-secret settings. GitHub's token setup guide: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens. Do not paste the token into chat, commit it, or copy your laptop's SSH private key to the cloud. A network secret must allow `api.github.com`; use a direct environment secret only if the cloud service requires it.
+3. Start a fresh task in that environment. Run `python tools/publish_digest.py --check-date 2026-10-06` to test the API connection without returning the digest text. A read check does not prove write access; confirm the first genuine new digest can be published before relying on the schedule.
+4. Use the full prompt in `prompts/cloud-daily-selection.md` for a scheduled cloud task, matching the time of the existing daily task in America/Chicago. It contains the research preferences, delivery path, exact format, duplicate protection, and usage limits. The prompt file itself does not create a schedule.
+5. Confirm a successful write triggers a successful `Publish daily-arXiv` workflow. A queued workflow is not proof of publication. Then disable the old research task to avoid producing the same selection twice. This project does not change your existing task or schedule.
 
-Scheduled web tasks can use the connected tools available to their chat: https://learn.chatgpt.com/docs/automations. Do not assume a classic Chat task has the same write tools as Work. If the current chat exposes the GitHub write action and a trial succeeds, it can use this same delivery format without a separate publisher.
+Scheduled web tasks can use the tools available to their chat: https://learn.chatgpt.com/docs/automations. Local Work tasks need your computer awake; cloud Work without local resources does not: https://learn.chatgpt.com/docs/get-started-with-work. Do not assume a classic Chat task can call the publisher or read another private chat's results automatically.
 
-If cloud Work file writes are unavailable, a Codex Cloud task with authorized GitHub publishing is a fallback. It runs remotely but needs a configured cloud environment/repository access. Changes made in a cloud checkout still need to be committed and published. An API collector running in GitHub Actions is another fallback with separately billed model usage; it is not configured here.
+A model API collector running in GitHub Actions is another route, with separately billed model usage; it is not configured here. The supplied cloud prompt replaces the existing daily research task after a successful trial rather than attempting to retrieve its private chat output.
 
 ## Token usage
 
 The existing October 6 raw digest contains 22,554 characters and measures 5,434 tokens with the `o200k_base` tokenizer. This is an estimate of the text payload, not the complete model run or a guaranteed tokenizer match for every model.
 
-Generating it again as a full chat response after emitting it in a GitHub tool call would duplicate roughly that much visible output. The supplied prompt writes the full digest once and responds with a short link.
+Generating it again as a full chat response after writing the cloud file would duplicate roughly that much visible output. The supplied prompt writes the full digest once, lets Python upload the bytes, and responds with a short link. The script returns only status, date, count, and commit metadata.
 
 Research context, reasoning, tool instructions, and tool results add usage. On Plus, cloud Work/Codex usage can consume more allowance than a plain Chat task; there is no fixed token-to-Plus-quota conversion. Compare the usage dashboard before and after a representative run. Do not infer subscription allowance consumption from API dollar prices. Official usage guidance: https://learn.chatgpt.com/docs/pricing.
 
@@ -35,5 +43,5 @@ The Python parser, static build, Docker preview, and Pages deployment consume ze
 - New Markdown files in `incoming/` are validated and included at build time. No generated JSON commit or second agent run is needed.
 - Invalid dates, incomplete rankings, missing explanation sections, duplicate IDs, and unsafe arXiv links fail the build. The last successful deployment stays online.
 - Existing dates are protected. Matching redelivery is idempotent; existing reviewed JSON topic tags are preserved. Conflicting content fails instead of silently replacing a published explanation.
-- The daily task checks just its own date and makes one write. It does not fetch the entire archive or modify website code.
+- The daily task checks just its own date and makes one write. It does not fetch the entire archive into model context or modify website code.
 - This repository has no independent daily research schedule. The cloud task triggers deployment by creating a digest file.

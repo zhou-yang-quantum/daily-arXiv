@@ -7,8 +7,10 @@
 !tools/
 !tools/build.py
 !tools/import_digest.py
+!tools/publish_digest.py
 !tests/
 !tests/test_archive.py
+!tests/test_publisher.py
 !site/
 !site/**
 !content/

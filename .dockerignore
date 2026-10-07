@@ -1,0 +1,19 @@
+# Send only build inputs; omit Git history, local caches, and credentials.
+**
+!Dockerfile
+!package.json
+!package-lock.json
+!preferences.json
+!tools/
+!tools/build.py
+!tools/import_digest.py
+!tests/
+!tests/test_archive.py
+!site/
+!site/**
+!content/
+!content/**
+!incoming/
+!incoming/**
+**/__pycache__/
+**/*.pyc

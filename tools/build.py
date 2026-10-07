@@ -4,15 +4,24 @@ import shutil
 from pathlib import Path
 import datetime
 
+if __package__:
+    from .import_digest import parse_digest
+else:
+    from import_digest import parse_digest
+
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
 TOPICS = ["Quantum field theory", "Non-equilibrium", "Quantum error correction", "Quantum simulation", "Quantum algorithms", "Exactly solvable models", "Statistical mechanics"]
 
 
-def load_archive(folder):
-    days = []
-    for filename in sorted(folder.glob("*.json"), reverse=True):
-        day = json.loads(filename.read_text(encoding="utf-8"))
+def load_archive(folder, incoming_folder=None):
+    entries = [(filename, json.loads(filename.read_text(encoding="utf-8")))
+               for filename in folder.glob("*.json")]
+    if incoming_folder is not None:
+        entries.extend((filename, parse_digest(filename.read_text(encoding="utf-8-sig")))
+                       for filename in incoming_folder.glob("*.md") if filename.name != "README.md")
+    by_date = {}
+    for filename, day in entries:
         date = day["date"]
         datetime.date.fromisoformat(date)
         if filename.stem != date or day["title"] != f"arXiv-{date}":
@@ -35,14 +44,23 @@ def load_archive(folder):
                     raise ValueError(f"{date}: missing {section}")
             if any(t not in TOPICS for t in paper["topics"]):
                 raise ValueError(f"{date}: unrecognized topic")
-        days.append(day)
-    if not days:
+        if date in by_date:
+            # Preserve reviewed topic tags in existing JSON, but never silently
+            # replace a published explanation with a different incoming digest.
+            def substantive(entry):
+                return {**entry, "papers": [{k: v for k, v in p.items() if k != "topics"}
+                                            for p in entry["papers"]]}
+            if substantive(by_date[date]) != substantive(day):
+                raise ValueError(f"{date}: conflicting digests; the published date is protected")
+            continue
+        by_date[date] = day
+    if not by_date:
         raise ValueError("No digests found")
-    return days
+    return [by_date[date] for date in sorted(by_date, reverse=True)]
 
 
 def main():
-    days = load_archive(ROOT / "content" / "digests")
+    days = load_archive(ROOT / "content" / "digests", ROOT / "incoming")
     # Validate dependencies before touching a previous build.
     vendors = {
         "marked.umd.js": ROOT / "node_modules/marked/lib/marked.umd.js",
@@ -67,7 +85,11 @@ def main():
     (DIST / "data/preferences.json").write_text((ROOT / "preferences.json").read_text(encoding="utf-8"), encoding="utf-8")
     (DIST / ".nojekyll").write_text("", encoding="utf-8")
     # Include reusable source digests for voice reading and portable export.
-    shutil.copytree(ROOT / "content/digests", DIST / "data/digests", dirs_exist_ok=True)
+    exported = DIST / "data/digests"
+    exported.mkdir(exist_ok=True)
+    for day in days:
+        (exported / f"{day['date']}.json").write_text(
+            json.dumps(day, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"Built {len(days)} day(s), {sum(len(d['papers']) for d in days)} selections in dist/")
 
 

@@ -44,13 +44,57 @@ class DigestTests(unittest.TestCase):
                 load_archive(Path(folder))
 
     def test_real_archive_has_complete_sections(self):
-        days = load_archive(ROOT / 'content/digests')
+        days = load_archive(ROOT / 'content/digests', ROOT / 'incoming')
         for day in days:
             self.assertEqual(len(day['papers']), 10)
             self.assertEqual(sorted(day['reading_order']), list(range(1, 11)))
             for paper in day['papers']:
                 for key in ('summary', 'background', 'why'):
                     self.assertNotIn('\ue200', paper[key])
+
+    def test_incoming_markdown_is_published_without_json_commit(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder = Path(temp, 'digests')
+            incoming = Path(temp, 'incoming')
+            folder.mkdir()
+            incoming.mkdir()
+            Path(incoming, 'README.md').write_text('Delivery instructions', encoding='utf-8')
+            Path(incoming, '2026-10-06.md').write_text(example_digest(), encoding='utf-8')
+            days = load_archive(folder, incoming)
+            self.assertEqual(days[0]['date'], '2026-10-06')
+            self.assertEqual(len(days[0]['papers']), 10)
+            self.assertEqual(list(folder.iterdir()), [])
+
+    def test_incoming_filename_must_match_digest_date(self):
+        with tempfile.TemporaryDirectory() as temp:
+            incoming = Path(temp, 'incoming')
+            incoming.mkdir()
+            Path(incoming, '2026-10-05.md').write_text(example_digest(), encoding='utf-8')
+            with self.assertRaises(ValueError):
+                load_archive(Path(temp, 'empty'), incoming)
+
+    def test_identical_redelivery_keeps_reviewed_tags(self):
+        day = parse_digest(example_digest())
+        day['papers'][0]['topics'] = ['Quantum field theory']
+        with tempfile.TemporaryDirectory() as temp:
+            folder, incoming = Path(temp, 'digests'), Path(temp, 'incoming')
+            folder.mkdir()
+            incoming.mkdir()
+            Path(folder, '2026-10-06.json').write_text(json.dumps(day), encoding='utf-8')
+            Path(incoming, '2026-10-06.md').write_text(example_digest(), encoding='utf-8')
+            days = load_archive(folder, incoming)
+            self.assertEqual(len(days), 1)
+            self.assertEqual(days[0]['papers'][0]['topics'], ['Quantum field theory'])
+
+    def test_conflicting_redelivery_fails(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder, incoming = Path(temp, 'digests'), Path(temp, 'incoming')
+            folder.mkdir()
+            incoming.mkdir()
+            Path(folder, '2026-10-06.json').write_text(json.dumps(parse_digest(example_digest())), encoding='utf-8')
+            Path(incoming, '2026-10-06.md').write_text(example_digest().replace('Summary of paper 1.', 'A changed claim.'), encoding='utf-8')
+            with self.assertRaises(ValueError):
+                load_archive(folder, incoming)
 
 
 if __name__ == '__main__':

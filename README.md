@@ -16,6 +16,24 @@ The first entry is **arXiv-2026-10-06**, imported from the latest selection in t
 - Saved papers and read status in this browser's local storage. They do not sync across devices; clearing browser data removes them.
 - Keyboard navigation, accessible controls, and print-friendly notes.
 
+## Preview with Docker
+
+With Docker Desktop running, start the preview from the repository folder:
+
+```sh
+docker compose up --build -d --wait
+```
+
+Open http://localhost:8080. Docker installs the build dependencies, validates the archive, and serves the finished site. No local Node.js, Python, or model API key is needed. The port is bound to this computer only.
+
+After editing the site or adding a digest, run the same command again to rebuild. To stop the preview:
+
+```sh
+docker compose down
+```
+
+If port 8080 is occupied, set `PREVIEW_PORT` to another available port before starting Compose (PowerShell example: `$env:PREVIEW_PORT = "8081"`).
+
 ## Develop locally
 
 Requires Node.js 22+ and Python 3.10+.
@@ -32,7 +50,11 @@ The website is a static HTML/CSS/JavaScript application. Markdown and KaTeX are 
 
 ## Add the next day's selection
 
-The existing ChatGPT scheduled task remains the selection source. **This repository does not yet generate daily selections or automatically retrieve future ChatGPT messages.** Its GitHub Actions workflow builds and publishes the archive whenever content is pushed.
+The repository now accepts a single Markdown delivery at `incoming/YYYY-MM-DD.md`. GitHub Actions automatically validates it, incorporates it into the archive, and publishes the site. No manual conversion or generated-JSON commit is needed.
+
+For unattended delivery, use the cloud task prompt in [prompts/cloud-daily-selection.md](prompts/cloud-daily-selection.md) and the one-time setup in [docs/daily-pipeline.md](docs/daily-pipeline.md). **The existing ChatGPT schedule has not been changed, and no replacement schedule has been created by this repository.** GitHub write access must work in the intended scheduled cloud chat.
+
+The existing ChatGPT task remains the selection source until the replacement cloud task is verified. This repository does not retrieve private ChatGPT conversations. To import a digest manually as an alternative:
 
 1. Copy the task's daily answer into a UTF-8 Markdown file, such as `new-digest.md`.
 2. Import and validate it:
@@ -68,7 +90,7 @@ Repeat for items 1–10. The importer rejects missing sections, mismatched dates
 
 Structured JSON entries can also be added directly. Use the existing entry as the schema. `tools/build.py` validates dates, sections, rankings, and arXiv links before publication. Topic tags are an editorial aid; the Markdown importer assigns initial tags with keyword rules, which can be refined in the JSON.
 
-For fully automatic collection, the existing scheduled task would need a tested write connection to this repository, or a separate scheduled collector/model pipeline. No such integration or paid API calls are configured in this version.
+For fully automatic collection, the intended scheduled task needs a tested write connection to this repository. No paid model API calls are configured in the site pipeline.
 
 ## Preferences
 

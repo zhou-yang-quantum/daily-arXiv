@@ -1,0 +1,21 @@
+# Daily digest delivery
+
+Create one UTF-8 Markdown file here for each daily selection:
+
+`incoming/YYYY-MM-DD.md`
+
+Start with `# arXiv-YYYY-MM-DD`, followed by exactly ten item headings:
+`## arXiv-YYYY-MM-DD — Item N`.
+
+Each item must include a `###` paper title, authors and `arXiv:YYMM.NNNNN`,
+`**Priority: ...**`, summary paragraphs, `**Background.**`, and
+`**Why it matters for you:**`.
+
+The existing GitHub Pages workflow automatically parses, validates, and publishes
+these files. No model API calls or generated-JSON commits are needed. A malformed
+entry fails the build and leaves the previous successful website in place.
+
+Do not overwrite earlier dates. If the same date also exists in `content/digests/`,
+the substantive content must agree; the reviewed JSON's topic tags take precedence.
+
+The complete cloud-task prompt is in `prompts/cloud-daily-selection.md`.

@@ -1,49 +1,38 @@
 # daily-arXiv
 
-A personal arXiv reading archive: usually ten ranked papers per day, expanding up to twenty when warranted, with a summary, background and motivation, and why each paper matters.
+A personal daily arXiv digest and reading archive. Each entry ranks 10–20 newly announced papers and explains the main result, background and motivation, and why it matters for the reader.
 
-**Website:** https://zhou-yang-quantum.github.io/daily-arXiv/
+**[Read the website](https://zhou-yang-quantum.github.io/daily-arXiv/)**
 
-The first entry is **arXiv-2026-10-06**, regenerated from its verified announcement batch using the current selection rules. It contains twelve ranked papers with source-grounded summaries, background, and relevance notes. The dated v1 source catalog is preserved in `sources/2026-10-06.json`.
+The current selection focuses on theoretical physics and quantum information: quantum field theory, non-equilibrium physics, quantum error correction, quantum simulation, quantum algorithms, and exactly solvable models. You can adapt the same setup to your own interests.
 
-## Reading experience
+## What it does
 
-- Responsive desktop and mobile layouts, including small phone screens.
-- An archive by date, exact dated item labels, and direct links to individual papers.
-- Search across titles, authors, summaries, background, and relevance notes across every date.
-- Topic filters and a suggested reading order.
-- Reading and compact views, local equation rendering, and arXiv/PDF links.
-- Saved papers and read status in this browser's local storage. They do not sync across devices; clearing browser data removes them.
-- Keyboard navigation, accessible controls, and print-friendly notes.
-- Copy a whole dated digest for ChatGPT Voice, or copy one paper, with TeX preserved.
-- Play a continuous day recording or a single paper, with speed and 30-second seek controls.
+- Browse by date, search the archive, and filter by topic.
+- Read summaries with equations and links to the original arXiv papers.
+- Save papers and track reading progress in your browser; these do not sync across devices.
+- Copy a dated digest or individual paper for voice reading, or listen to recordings when available.
 
-Recordings use free offline speech synthesis and GitHub Release storage, with no
-additional GPT generation or model API billing. Android media controls support
-background playback and headphone actions where the browser and hardware expose
-them. [Audio generation and playback details](audio/README.md).
+The website is static HTML/CSS/JavaScript. Local Codex generates the digests; GitHub Actions collects arXiv source data and builds and deploys the website. Browsing, building, and manual digest imports need no model API key.
 
-## Preview with Docker
+## Try it locally
 
-With Docker Desktop running, start the preview from the repository folder:
+Clone this repository, or fork it on GitHub and clone your fork:
+
+```sh
+git clone https://github.com/zhou-yang-quantum/daily-arXiv.git
+cd daily-arXiv
+```
+
+With Docker Desktop running:
 
 ```sh
 docker compose up --build -d --wait
 ```
 
-Open http://localhost:8080. Docker installs the build dependencies, validates the archive, and serves the finished site. No local Node.js, Python, or model API key is needed. The port is bound to this computer only.
+Open **http://localhost:8080**. Run the same command after edits to rebuild; use `docker compose down` to stop.
 
-After editing the site or adding a digest, run the same command again to rebuild. To stop the preview:
-
-```sh
-docker compose down
-```
-
-If port 8080 is occupied, set `PREVIEW_PORT` to another available port before starting Compose (PowerShell example: `$env:PREVIEW_PORT = "8081"`).
-
-## Develop locally
-
-Requires Node.js 22+ and Python 3.10+.
+Alternatively, with Node.js 22+ and Python 3.11+:
 
 ```sh
 npm ci
@@ -51,81 +40,32 @@ npm run build
 npm run preview
 ```
 
-Open http://127.0.0.1:4173. All paths also work under the GitHub Pages project path `/daily-arXiv/`.
+Open **http://127.0.0.1:4173**.
 
-The website is a static HTML/CSS/JavaScript application. Markdown and KaTeX are copied into the build, so readers do not depend on external font or rendering services. No model API key is needed to browse or build it.
+## Make it your own
 
-## Add the next day's selection
+The minimum changes for a personalized digest are:
 
-For subscription-only automatic generation, see [the local schedule and startup
-catch-up workflow](docs/local-pipeline.md). Its model is GPT-6.1 Sol at High effort;
-the requested clock is 10:00 Monday–Friday in America/Chicago. The free source
-collector archives announcement batches without AI calls, and local Codex
-generates missing dates using the existing Plus login. Historical cloud setup
-notes below document the earlier attempted route.
+| File | What to change |
+| --- | --- |
+| [prompts/local-research.md](prompts/local-research.md) | Set your interests, exclusions, assumed background, and what makes a paper useful to you. This is the prompt the local generator actually reads. Keep its dated output format. |
+| [preferences.json](preferences.json) | Match the interests and criteria shown on the website to your prompt. This file does not control generation. |
+| [local-pipeline.json](local-pipeline.json) | Set the arXiv `categories` to scan. For automation, also choose your `start_date`, timezone, time, model, and effort. |
 
-The repository now accepts a single Markdown delivery at `incoming/YYYY-MM-DD.md`. GitHub Actions automatically validates it, incorporates it into the archive, and publishes the site. No manual conversion or generated-JSON commit is needed.
+For example, replace the prompt's topic paragraph with your preferred fields and ask for explanations at your own level. Keep the default ten papers, with up to twenty when warranted; the importer currently enforces 10–20. Edits affect future digests, so existing entries remain as examples until you replace them deliberately.
 
-The local replacement is active and successfully published October 7 (eleven papers after the date audit) and October 8 (twelve papers). Its startup watcher delivered October 8 and both Pages deployments succeeded. The Python publisher handles the GitHub upload without model calls.
+To host your own copy, enable Actions in your fork and select **Settings → Pages → Source → GitHub Actions**. Push to `main` to publish. Update the repository link in `site/index.html` and this README's website link. The [technical setup guide](docs/technical-setup.md#fork-specific-settings) lists the additional repository URLs to change before enabling automatic publishing or audio.
 
-The earlier cloud schedule ran without the repository or private token and was disabled; see [the historical scheduling result](docs/cloud-schedule.md) and [the comparison with LaserWong's pipeline](docs/reference-pipeline.md). The prepared cloud prompt and environment remain available for manual use. The old ChatGPT research schedule can now be disabled by the owner. This repository does not retrieve private ChatGPT conversations. To import a digest manually as an alternative:
+For interests outside the current physics topics, the same guide explains how to adjust the topic filters.
 
-1. Copy the task's daily answer into a UTF-8 Markdown file, such as `new-digest.md`.
-2. Import and validate it:
+## Add digests
 
-   ```sh
-   python tools/import_digest.py new-digest.md
-   npm run build
-   ```
+**Manually:** save a digest as UTF-8 Markdown at `incoming/YYYY-MM-DD.md`, following the [format in the technical guide](docs/technical-setup.md#digest-format). Run `npm run build` to validate it, then commit the Markdown and push to `main`. GitHub Actions parses it during the build and deploys the updated archive; you do not need to commit generated JSON or `dist/`.
 
-3. Commit the new JSON entry in `content/digests/` and push to `main`. GitHub Actions publishes the updated archive.
+**Automatically:** the current setup runs locally on Windows with Codex signed in through ChatGPT and GitHub CLI signed in to the destination repository. A Codex task runs at 10:00 on weekdays, and a startup watcher catches up missed days while the computer and Codex app are running. This uses the existing ChatGPT login with no paid model API fallback; account usage limits still apply.
 
-The expected Markdown structure matches the current task's format:
-
-```markdown
-# arXiv-YYYY-MM-DD
-
-Optional daily overview.
-
-## arXiv-YYYY-MM-DD — Item 1
-
-### Exact paper title
-**Authors — arXiv:YYMM.NNNNN**
-
-Summary paragraphs.
-
-**Background.** Background and motivation.
-
-**Why it matters for you:** Personalized relevance.
-```
-
-Repeat for items 1–N, with 10–20 papers and consecutive ranks. Use numerical ranking and a daily overview without priority verdicts. The importer rejects missing sections, mismatched dates, duplicate papers, incomplete rankings, and counts outside 10–20. Legacy entries with priority lines remain importable. An existing date is protected unless you explicitly pass `--replace`.
-
-Structured JSON entries can also be added directly. Use the existing entry as the schema. `tools/build.py` validates dates, sections, rankings, and arXiv links before publication. Topic tags are an editorial aid; the Markdown importer assigns initial tags with keyword rules, which can be refined in the JSON.
-
-Automatic local generation and publishing use the tested existing GitHub CLI login. No paid model API calls are configured.
-
-## Preferences
-
-`preferences.json` records the user's priorities, exclusions, and selection size. `prompts/daily-selection.md` contains the current research prompt. The website displays these criteria for reference; changing them alone does not rerank existing entries or modify the ChatGPT task.
-
-## Publish
-
-GitHub Pages uses the `workflow` publishing source. `.github/workflows/pages.yml` validates the archive, builds `dist/`, and deploys it on pushes to `main` or manual workflow runs. Only `dist/` is published.
-
-The personal website repository is independent and can remain private.
-
-## Verification
-
-```sh
-python -m unittest discover -s tests
-npx playwright install chromium
-npm run build
-npx playwright test
-```
-
-Tests cover digest validation, search and topics, bookmarks and read status, multiple dates, direct item links, imported-content sanitization, equations, and mobile widths.
+See **[Technical setup and agent reference](docs/technical-setup.md)** for the exact research prompt, sanitized scheduled-task prompt, installation steps, catch-up behavior, GitHub Actions workflows, and validation commands. Local schedules and logins must be set up separately for each person; cloning the repo does not create them.
 
 ## Credits
 
-Inspired by [LaserWong/LaserWong.github.io](https://github.com/LaserWong/LaserWong.github.io). The site implementation is original. Markdown is rendered with [Marked](https://github.com/markedjs/marked) and equations with [KaTeX](https://github.com/KaTeX/KaTeX); their licenses are included with the published vendor assets.
+Inspired by [LaserWong/LaserWong.github.io](https://github.com/LaserWong/LaserWong.github.io). Markdown and equations use [Marked](https://github.com/markedjs/marked) and [KaTeX](https://github.com/KaTeX/KaTeX); their licenses are included in the published assets. [Audio implementation and credits](audio/README.md).

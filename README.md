@@ -50,6 +50,13 @@ The website is a static HTML/CSS/JavaScript application. Markdown and KaTeX are 
 
 ## Add the next day's selection
 
+For subscription-only automatic generation, see [the local schedule and startup
+catch-up workflow](docs/local-pipeline.md). Its model is GPT-6.1 Sol at High effort;
+the requested clock is 10:00 Monday–Friday in America/Chicago. The free source
+collector archives announcement batches without AI calls, and local Codex
+generates missing dates using the existing Plus login. Historical cloud setup
+notes below document the earlier attempted route.
+
 The repository now accepts a single Markdown delivery at `incoming/YYYY-MM-DD.md`. GitHub Actions automatically validates it, incorporates it into the archive, and publishes the site. No manual conversion or generated-JSON commit is needed.
 
 The cloud research and delivery prompt is in [prompts/cloud-daily-selection.md](prompts/cloud-daily-selection.md), with environment setup in [docs/daily-pipeline.md](docs/daily-pipeline.md). The Python publisher handles the GitHub upload without model calls. **The manual scheduled-context check ran in a cloud runtime without the repository or private token and was disabled. No working recurring publisher is active.** See [the scheduling result](docs/cloud-schedule.md) and [the comparison with LaserWong's GitHub Actions pipeline](docs/reference-pipeline.md). The current ChatGPT GitHub connector rejected write actions during testing; the separate prepared cloud credential passed user-reported manual write checks.

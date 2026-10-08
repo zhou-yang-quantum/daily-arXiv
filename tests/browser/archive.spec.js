@@ -1,5 +1,20 @@
 import { test, expect } from '@playwright/test';
 
+async function archiveFixture(route) {
+  const response = await route.fetch();
+  const data = await response.json();
+  // Keep browser fixtures independent of newly published daily digests.
+  data.days = data.days.filter((day) => day.date === '2026-10-06');
+  return { response, data };
+}
+
+test.beforeEach(async ({ page }) => {
+  await page.route('**/data/archive.json', async (route) => {
+    const { response, data } = await archiveFixture(route);
+    await route.fulfill({ response, json: data });
+  });
+});
+
 test('dated digest, readable math, and complete paper sections', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   const errors = [];
@@ -70,8 +85,7 @@ test('mobile reading, deep links, preferences, and no horizontal overflow', asyn
 
 test('additional dates navigate and search across the entire archive', async ({ page }) => {
   await page.route('**/data/archive.json', async (route) => {
-    const response = await route.fetch();
-    const data = await response.json();
+    const { response, data } = await archiveFixture(route);
     const older = structuredClone(data.days[0]);
     older.date = '2026-10-02'; older.title = 'arXiv-2026-10-02';
     older.papers[0].title = 'An older unique research idea';
@@ -89,8 +103,7 @@ test('additional dates navigate and search across the entire archive', async ({ 
 
 test('imported Markdown cannot run HTML or javascript links', async ({ page }) => {
   await page.route('**/data/archive.json', async (route) => {
-    const response = await route.fetch();
-    const data = await response.json();
+    const { response, data } = await archiveFixture(route);
     data.days[0].papers[0].summary = '<img src=x onerror="window.badImport=true"><script>window.badImport=true</script>\n\n[Unsafe](javascript:alert(1))\n\nA safe summary.';
     await route.fulfill({ response, json: data });
   });
@@ -102,8 +115,7 @@ test('imported Markdown cannot run HTML or javascript links', async ({ page }) =
 
 test('twenty-paper days support mobile reading order and direct links without verdicts', async ({ page }) => {
   await page.route('**/data/archive.json', async (route) => {
-    const response = await route.fetch();
-    const data = await response.json();
+    const { response, data } = await archiveFixture(route);
     const day = data.days[0];
     const additional = structuredClone(day.papers).map((paper, index) => {
       paper.rank = index + 11;

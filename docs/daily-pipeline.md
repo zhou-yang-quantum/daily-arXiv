@@ -1,5 +1,16 @@
 # Automatic daily delivery
 
+## Current route: local generation using Plus
+
+The user requires no additional model API spending. The implemented route is a
+local 10:00 Monday–Friday America/Chicago schedule, using GPT-6.1 Sol at High
+effort with ChatGPT subscription login, plus a persistent startup catch-up
+watcher. Free GitHub Actions archives dated arXiv inputs while the computer is off;
+local Codex generates only the missing daily digests when the app is running. See
+[the local workflow guide](local-pipeline.md) for model changes, recovery, and
+status commands. The earlier published cloud environment remains usable for
+manual tasks; the tested remote schedule did not inherit its files or credential.
+
 ## Prepared cloud route and current status
 
 The prepared cloud task researches and publishes through the small Python publisher. Recurring execution requires a scheduler that can actually use the published environment and its credential:

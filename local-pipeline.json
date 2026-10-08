@@ -1,0 +1,13 @@
+{
+  "start_date": "2026-10-07",
+  "timezone": "America/Chicago",
+  "hour": 10,
+  "minute": 0,
+  "model": "gpt-6.1-sol",
+  "reasoning_effort": "high",
+  "retry_minutes": 60,
+  "generation_timeout_minutes": 45,
+  "categories": ["quant-ph", "hep-th", "hep-lat", "cond-mat.stat-mech", "math-ph"],
+  "require_chatgpt_login": true,
+  "allow_paid_api": false
+}

@@ -116,7 +116,7 @@ test('imported Markdown cannot run HTML or javascript links', async ({ page }) =
   await expect(page.locator('.paper-summary a').first()).not.toHaveAttribute('href', /javascript:/);
 });
 
-test('twenty-paper days support mobile reading order and direct links without verdicts', async ({ page }) => {
+test('twenty-paper days support mobile direct links without a reading-order bar or verdicts', async ({ page }) => {
   await page.route('**/data/archive.json', async (route) => {
     const { response, data } = await archiveFixture(route);
     const day = data.days[0];
@@ -140,10 +140,7 @@ test('twenty-paper days support mobile reading order and direct links without ve
   await expect(page.locator('.paper-detail[open]')).toHaveCount(20);
   await expect(page.locator('.priority-tag')).toHaveCount(0);
   await expect(page.locator('#paper-total')).toHaveText('20 papers');
-  await expect(page.locator('.reading-order a')).toHaveCount(20);
-  await page.getByRole('button', { name: 'Latest', exact: true }).click();
-  await page.locator('.reading-order a').filter({ hasText: /^20$/ }).click();
-  await expect(card).toBeInViewport();
+  await expect(page.locator('#reading-plan, #reading-order')).toHaveCount(0);
   await page.getByRole('button', { name: 'Save item 20', exact: true }).click();
   await page.reload();
   await expect(page.getByRole('button', { name: 'Unsave item 20', exact: true })).toHaveAttribute('aria-pressed', 'true');

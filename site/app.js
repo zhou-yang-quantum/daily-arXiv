@@ -184,9 +184,6 @@ function render() {
   $('#saved-button').classList.toggle('active', state.savedOnly);
   $('#saved-button').setAttribute('aria-pressed', state.savedOnly);
   $('#saved-count').textContent = String(saved.size);
-  $('#reading-plan').hidden = filtering;
-  const order = day.reading_order;
-  $('#reading-order').innerHTML = order.map((rank, i) => (i ? '<span aria-hidden="true">→</span>' : '') + '<a href="#date=' + day.date + '&paper=' + rank + '" data-rank="' + rank + '" aria-label="Jump to item ' + rank + '">' + rank + '</a>').join('');
   $('#clear-filters').hidden = !filtering;
   $('#papers').replaceChildren(...results.map(({ day: d, paper }) => renderPaper(d, paper)));
   if (!results.length) {
@@ -225,7 +222,6 @@ $('#view-button').addEventListener('click', () => {
   $('#view-button span').textContent = state.compact ? 'Reading view' : 'Compact view';
   for (const details of document.querySelectorAll('.paper-detail')) details.open = !state.compact;
 });
-$('#reading-order').addEventListener('click', (event) => { const link = event.target.closest('[data-rank]'); if (link) { event.preventDefault(); syncHash(link.dataset.rank); openPaper(state.date, Number(link.dataset.rank)); } });
 $('#papers').addEventListener('click', (event) => {
   if (event.target.closest('[data-action="reset"]')) { reset(); return; }
   const card = event.target.closest('.paper-card');
@@ -280,7 +276,6 @@ async function load() {
     $('#date-subtitle').textContent = 'The archive could not be loaded.';
     $('#papers').innerHTML = '<div class="empty-state"><h3>Unable to load papers.</h3><p>Check your connection and reload.</p><button class="text-button" id="retry-button">Try again →</button></div>';
     $('#retry-button').addEventListener('click', load);
-    $('#reading-plan').hidden = true;
   }
   try {
     const response = await fetch('./data/preferences.json');

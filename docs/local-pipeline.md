@@ -13,8 +13,10 @@ credits or switching providers.
 The saved local app schedule is **Daily arXiv — local generation and catch-up**,
 at **10:00 Monday–Friday in America/Chicago** (Austin time, including daylight
 saving changes). It invokes the deterministic controller, which launches a fresh
-model context for each missing day. A paused schedule should be activated only
-after the first genuine digest is published and deployed.
+model context for each missing day. The schedule is active. The October 7 and
+October 8 trials deployed successfully; October 7 has eleven papers after the
+first-announcement audit, and October 8 has twelve. The startup watcher performed
+the October 8 run.
 
 A current-user Windows task, **Daily-arXiv startup catch-up**, starts a hidden
 watcher at Windows login. The watcher checks once per minute while the Codex app
@@ -38,7 +40,9 @@ drafts remain on disk. The next run resumes unfinished work.
 
 The free **Archive arXiv announcements** GitHub Actions workflow saves immutable
 `sources/YYYY-MM-DD.json` snapshots even while the computer is off. It archives
-dated announcement listings and v1 metadata without any model calls. Two weekday
+dated announcement listings and v1 metadata without any model calls. A paper must
+appear as a new submission in its primary category on the target date. This also
+excludes old papers newly cross-listed into another category. Two weekday
 capture opportunities, at 02:17 and 08:17 Eastern, reduce dependence on one
 scheduled attempt. Each run also recovers available recent gaps. Existing
 snapshots remain unchanged, so later paper revisions do not alter historical
@@ -90,5 +94,6 @@ then deploys through the existing workflow.
 
 Clearing browser data does not affect this queue. Removing the local cache
 removes its ledger and logs; published dates are still checked against GitHub, but
-review/cooldown information would be lost. Keep the other research schedule until
-this route successfully publishes and deploys a real digest.
+review/cooldown information would be lost. The replacement has successfully
+published and deployed; the owner can now disable the old ChatGPT research
+schedule. Its cancellation is separate from this local schedule.

@@ -158,6 +158,7 @@ def child_environment():
     for key in ('OPENAI_API_KEY', 'AZURE_OPENAI_API_KEY', 'CODEX_API_KEY', 'CODEX_ACCESS_TOKEN',
                 'ARXIV_GITHUB_TOKEN', 'GH_TOKEN', 'GITHUB_TOKEN'):
         environment.pop(key, None)
+    environment['PYTHONUTF8'] = '1'
     return environment
 
 
@@ -233,6 +234,8 @@ def validate_snapshot(snapshot, day):
             raise ValueError('Paper date or v1 abstract is missing')
         if not collect_arxiv.ARXIV_ID.fullmatch(paper['id']) or 'v' in paper['id']:
             raise ValueError('Snapshot contains an invalid paper ID')
+        if snapshot.get('version', 1) >= 2 and (paper.get('first_announcement_date') != day or not paper.get('primary_listing_sources')):
+            raise ValueError('Paper lacks first-announcement evidence for this date')
     return snapshot
 
 

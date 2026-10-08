@@ -45,16 +45,48 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(collector.parse_listing('Total of 0 entries'), ([], set(), 0))
 
     def test_atom_v1_metadata_and_error_entries(self):
-        atom = '''<feed xmlns="http://www.w3.org/2005/Atom"><entry>
+        atom = '''<feed xmlns="http://www.w3.org/2005/Atom" xmlns:arxiv="http://arxiv.org/schemas/atom"><entry>
         <id>http://arxiv.org/abs/2610.00001v1</id><title>A paper</title>
         <summary>First version abstract.</summary><published>2026-10-01T12:00:00Z</published>
         <author><name>A. Author</name></author><category term="quant-ph"/>
+        <arxiv:primary_category term="quant-ph"/>
         </entry></feed>'''
         paper = collector.parse_atom(atom)['2610.00001']
         self.assertEqual(paper['source_v1'], 'https://arxiv.org/abs/2610.00001v1')
         self.assertEqual(paper['authors'], ['A. Author'])
+        self.assertEqual(paper['primary_category'], 'quant-ph')
         with self.assertRaises(ValueError):
             collector.parse_atom(atom.replace('http://arxiv.org/abs/2610.00001v1', 'http://arxiv.org/api/errors#incorrect_id_format'))
+        with self.assertRaises(ValueError):
+            collector.parse_atom(atom.replace('2610.00001v1', '2610.00001v2'))
+
+    def test_cross_list_marker_and_old_cross_list_exclusion(self):
+        listing = '''Total of 1 entries<h3>Thu, 8 Oct 2026</h3>
+        <dt><a href="/abs/2504.04899" title="Abstract">arXiv:2504.04899</a> (cross-list from physics.optics)</dt>'''
+        self.assertTrue(collector.parse_listing(listing)[0][0]['is_cross_list'])
+        metadata = {'2610.00001': {'primary_category': 'quant-ph'},
+                    '2610.00002': {'primary_category': 'hep-th'},
+                    '2504.04899': {'primary_category': 'physics.optics'}}
+        listings = {'quant-ph': ([{'id': '2610.00001', 'date': '2026-10-08', 'is_cross_list': False},
+                                  {'id': '2504.04899', 'date': '2026-10-08', 'is_cross_list': True}], set(), {'quant-ph-list'})}
+        def additional(category):
+            return ([{'id': '2610.00002', 'date': '2026-10-08', 'is_cross_list': False}] if category == 'hep-th' else [], set(), {category + '-list'})
+        with patch.object(collector, 'fetch_listing', side_effect=additional), patch.object(collector.time, 'sleep'):
+            first = collector.first_announcements(metadata, listings)
+        self.assertEqual(first['2610.00001']['date'], '2026-10-08')
+        self.assertEqual(first['2610.00002']['date'], '2026-10-08')
+        self.assertNotIn('2504.04899', first)
+
+    def test_verified_snapshot_rejects_wrong_first_announcement(self):
+        current = snapshot()
+        current['version'] = 2
+        for paper in current['papers']:
+            paper['first_announcement_date'] = current['date']
+            paper['primary_listing_sources'] = ['quant-ph-list']
+        pipeline.validate_snapshot(current, current['date'])
+        current['papers'][0]['first_announcement_date'] = '2026-10-06'
+        with self.assertRaises(ValueError):
+            pipeline.validate_snapshot(current, current['date'])
 
 
 class QueueTests(unittest.TestCase):
@@ -134,6 +166,7 @@ class QueueTests(unittest.TestCase):
             self.assertNotIn('OPENAI_API_KEY', environment)
             self.assertNotIn('ARXIV_GITHUB_TOKEN', environment)
             self.assertNotIn('GH_TOKEN', environment)
+            self.assertEqual(environment['PYTHONUTF8'], '1')
 
     def test_automatic_worker_honors_app_schedule_pause(self):
         with tempfile.TemporaryDirectory() as folder, patch.object(pipeline, 'RUNTIME', Path(folder)), \

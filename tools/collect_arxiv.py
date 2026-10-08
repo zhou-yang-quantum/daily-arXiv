@@ -12,6 +12,7 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 ATOM = {'a': 'http://www.w3.org/2005/Atom'}
+ARXIV_NAMESPACE = 'http://arxiv.org/schemas/atom'
 ARXIV_ID = re.compile(r'(?:\d{4}\.\d{4,5}|[a-z-]+/\d{7})(?:v\d+)?$')
 
 
@@ -46,6 +47,7 @@ class ListingParser(HTMLParser):
         if tag == 'dt':
             self.finish()
             self.current = {}
+            self.captures.append(('entry_marker', self.depth, []))
         if self.current is not None and tag == 'a' and values.get('title') == 'Abstract':
             paper_id = values.get('href', '').removeprefix('/abs/')
             if ARXIV_ID.fullmatch(paper_id):
@@ -70,6 +72,8 @@ class ListingParser(HTMLParser):
                 self.current_date = datetime.strptime(match.group(1), '%d %b %Y').date().isoformat() if match else None
                 if self.current_date:
                     self.dates.add(self.current_date)
+            elif field == 'entry_marker' and self.current is not None:
+                self.current['is_cross_list'] = '(cross-list' in value.lower()
             elif self.current is not None:
                 self.current[field] = re.sub(r'^(?:Title|Subjects):\s*', '', value)
             self.captures.remove((field, _, parts))
@@ -111,9 +115,12 @@ def parse_atom(text):
     entries = {}
     for entry in ET.fromstring(text).findall('a:entry', ATOM):
         raw_id = entry.findtext('a:id', '', ATOM).rsplit('/abs/', 1)[-1]
-        if not ARXIV_ID.fullmatch(raw_id):
-            raise ValueError('arXiv metadata returned an invalid entry')
+        if not ARXIV_ID.fullmatch(raw_id) or not raw_id.endswith('v1'):
+            raise ValueError('arXiv metadata returned an invalid entry or a version other than v1')
         paper_id = re.sub(r'v\d+$', '', raw_id)
+        primary = entry.find(f'{{{ARXIV_NAMESPACE}}}primary_category')
+        if primary is None or not primary.attrib.get('term'):
+            raise ValueError('arXiv metadata lacks the primary category')
         entries[paper_id] = {
             'id': paper_id,
             'title': clean(entry.findtext('a:title', '', ATOM)),
@@ -121,6 +128,7 @@ def parse_atom(text):
             'abstract': clean(entry.findtext('a:summary', '', ATOM)),
             'submitted_v1': entry.findtext('a:published', '', ATOM),
             'categories': sorted({item.attrib['term'] for item in entry.findall('a:category', ATOM)}),
+            'primary_category': primary.attrib['term'],
             'url': f'https://arxiv.org/abs/{paper_id}',
             'source_v1': f'https://arxiv.org/abs/{paper_id}v1',
         }
@@ -143,6 +151,39 @@ def fetch_metadata(ids):
     return metadata
 
 
+def fetch_listing(category):
+    if not re.fullmatch(r'[A-Za-z][A-Za-z0-9.-]*', category):
+        raise ValueError('Invalid arXiv category')
+    entries, dates, urls = [], set(), set()
+    offset = 0
+    while True:
+        url = f'https://arxiv.org/list/{category}/pastweek?' + urllib.parse.urlencode({'show': 2000, 'skip': offset})
+        page, page_dates, total = parse_listing(fetch_text(url))
+        entries.extend(page)
+        dates.update(page_dates)
+        urls.add(url)
+        offset += 2000
+        if offset >= total:
+            return entries, dates, urls
+        if offset >= 20000:
+            raise ValueError('Listing exceeds the collection safety limit; refusing a partial batch')
+        time.sleep(3)
+
+
+def first_announcements(metadata, listings):
+    """Require a primary-category new listing, not a later cross-list event."""
+    result = {}
+    for category in sorted({paper['primary_category'] for paper in metadata.values()}):
+        if category not in listings:
+            listings[category] = fetch_listing(category)
+            time.sleep(3)
+        entries, _, urls = listings[category]
+        for entry in entries:
+            if not entry.get('is_cross_list') and entry['id'] in metadata and metadata[entry['id']]['primary_category'] == category:
+                result[entry['id']] = {'date': entry['date'], 'sources': sorted(urls)}
+    return result
+
+
 def collect(categories, since, folder, through=None):
     """Capture all available dated batches; never change an existing snapshot."""
     folder.mkdir(parents=True, exist_ok=True)
@@ -151,29 +192,21 @@ def collect(categories, since, folder, through=None):
     sources = {}
     all_dates = set()
     all_sources = set()
+    listings = {}
     for category in categories:
-        offset = 0
-        while True:
-            url = f'https://arxiv.org/list/{category}/pastweek?' + urllib.parse.urlencode({'show': 2000, 'skip': offset})
-            entries, dates_seen, total = parse_listing(fetch_text(url))
-            all_dates.update(dates_seen)
-            all_sources.add(url)
-            for announced in dates_seen:
-                if since <= announced <= through and not (folder / f'{announced}.json').exists():
-                    batches.setdefault(announced, {})
-                    sources.setdefault(announced, set()).add(url)
-            for paper in entries:
-                announced = paper['date']
-                if announced in batches:
-                    previous = batches[announced].setdefault(paper['id'], {**paper, 'listed_categories': []})
-                    if category not in previous['listed_categories']:
-                        previous['listed_categories'].append(category)
-            offset += 2000
-            if offset >= total:
-                break
-            if offset >= 20000:
-                raise ValueError('Listing exceeds the collection safety limit; refusing a partial batch')
-            time.sleep(3)
+        entries, dates_seen, urls = listings[category] = fetch_listing(category)
+        all_dates.update(dates_seen)
+        all_sources.update(urls)
+        for announced in dates_seen:
+            if since <= announced <= through and not (folder / f'{announced}.json').exists():
+                batches.setdefault(announced, {})
+                sources.setdefault(announced, set()).update(urls)
+        for paper in entries:
+            announced = paper['date']
+            if announced in batches:
+                previous = batches[announced].setdefault(paper['id'], {**paper, 'listed_categories': []})
+                if category not in previous['listed_categories']:
+                    previous['listed_categories'].append(category)
         time.sleep(3)
     # A missing *past* weekday inside the complete listing window is a verified
     # empty batch (for example a holiday). Never call today's delayed batch empty.
@@ -189,15 +222,21 @@ def collect(categories, since, folder, through=None):
             day += timedelta(days=1)
     all_ids = sorted({paper_id for batch in batches.values() for paper_id in batch})
     metadata = fetch_metadata(all_ids)
+    first = first_announcements(metadata, listings)
     outputs = []
     for announced, batch in sorted(batches.items()):
         # A dated listing is the eligibility evidence. Submission timestamps are
         # retained for provenance, never used to guess announcement dates.
         papers = [{**metadata[paper_id], 'listed_categories': value['listed_categories'],
-                   'announcement_date': announced} for paper_id, value in sorted(batch.items())]
-        snapshot = {'date': announced, 'version': 1, 'metadata_version': 'v1',
+                   'announcement_date': announced, 'first_announcement_date': first[paper_id]['date'],
+                   'primary_listing_sources': first[paper_id]['sources']}
+                  for paper_id, value in sorted(batch.items()) if first.get(paper_id, {}).get('date') == announced]
+        excluded = [{'id': paper_id, 'reason': 'Not newly announced in its primary category on this date',
+                     'first_announcement_date': first.get(paper_id, {}).get('date')}
+                    for paper_id in sorted(batch) if first.get(paper_id, {}).get('date') != announced]
+        snapshot = {'date': announced, 'version': 2, 'metadata_version': 'v1',
                     'captured_at': datetime.now(timezone.utc).isoformat(),
-                    'listing_sources': sorted(sources[announced]), 'papers': papers}
+                    'listing_sources': sorted(sources[announced]), 'papers': papers, 'excluded_papers': excluded}
         target = folder / f'{announced}.json'
         target.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
         outputs.append({'date': announced, 'papers': len(papers)})

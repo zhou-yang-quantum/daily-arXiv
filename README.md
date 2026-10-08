@@ -59,9 +59,9 @@ notes below document the earlier attempted route.
 
 The repository now accepts a single Markdown delivery at `incoming/YYYY-MM-DD.md`. GitHub Actions automatically validates it, incorporates it into the archive, and publishes the site. No manual conversion or generated-JSON commit is needed.
 
-The cloud research and delivery prompt is in [prompts/cloud-daily-selection.md](prompts/cloud-daily-selection.md), with environment setup in [docs/daily-pipeline.md](docs/daily-pipeline.md). The Python publisher handles the GitHub upload without model calls. **The manual scheduled-context check ran in a cloud runtime without the repository or private token and was disabled. No working recurring publisher is active.** See [the scheduling result](docs/cloud-schedule.md) and [the comparison with LaserWong's GitHub Actions pipeline](docs/reference-pipeline.md). The current ChatGPT GitHub connector rejected write actions during testing; the separate prepared cloud credential passed user-reported manual write checks.
+The local replacement is active and successfully published October 7 (eleven papers after the date audit) and October 8 (twelve papers). Its startup watcher delivered October 8 and both Pages deployments succeeded. The Python publisher handles the GitHub upload without model calls.
 
-The existing ChatGPT task remains the selection source until the replacement cloud task is verified. This repository does not retrieve private ChatGPT conversations. To import a digest manually as an alternative:
+The earlier cloud schedule ran without the repository or private token and was disabled; see [the historical scheduling result](docs/cloud-schedule.md) and [the comparison with LaserWong's pipeline](docs/reference-pipeline.md). The prepared cloud prompt and environment remain available for manual use. The old ChatGPT research schedule can now be disabled by the owner. This repository does not retrieve private ChatGPT conversations. To import a digest manually as an alternative:
 
 1. Copy the task's daily answer into a UTF-8 Markdown file, such as `new-digest.md`.
 2. Import and validate it:
@@ -96,7 +96,7 @@ Repeat for items 1–N, with 10–20 papers and consecutive ranks. Use numerical
 
 Structured JSON entries can also be added directly. Use the existing entry as the schema. `tools/build.py` validates dates, sections, rankings, and arXiv links before publication. Topic tags are an editorial aid; the Markdown importer assigns initial tags with keyword rules, which can be refined in the JSON.
 
-For fully automatic collection, the intended scheduled task needs a tested write connection to this repository. No paid model API calls are configured in the site pipeline.
+Automatic local generation and publishing use the tested existing GitHub CLI login. No paid model API calls are configured.
 
 ## Preferences
 

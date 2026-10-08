@@ -27,7 +27,7 @@ Use the credential-based cloud publisher unless write access in the intended tas
 
 The Python publisher was successfully tested using the existing local GitHub CLI login, without printing or saving its credential. It delivered `incoming/2026-10-06.md` in commit `2946b0ec548261db86a051673d297c6665c68db5`; [the deployment succeeded](https://github.com/zhou-yang-quantum/daily-arXiv/actions/runs/37569877958).
 
-The user subsequently reported successful cloud credential, repository read, temporary write/read/delete, arXiv, and web-search checks. A full cloud research-and-publication run remains untested. The cloud conversation could not create a schedule. A separately created manual scheduled-context check then ran in a cloud runtime with Python but **without the repository/scripts or ARXIV_GITHUB_TOKEN** and was disabled. The scheduled runtime did not inherit the prepared setup. No working recurring publisher is active. See [the current scheduling result](cloud-schedule.md) and [the LaserWong comparison](reference-pipeline.md).
+The user subsequently reported successful cloud credential, repository read, temporary write/read/delete, arXiv, and web-search checks. A full cloud research-and-publication run remains untested. The cloud conversation could not create a schedule. A separately created manual scheduled-context check then ran in a cloud runtime with Python but **without the repository/scripts or ARXIV_GITHUB_TOKEN** and was disabled. The scheduled runtime did not inherit the prepared setup. This cloud route has no working recurring publisher; the local replacement above is active and verified. See [the historical scheduling result](cloud-schedule.md) and [the LaserWong comparison](reference-pipeline.md).
 
 ## One-time setup
 

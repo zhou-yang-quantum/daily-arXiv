@@ -4,7 +4,7 @@ A personal arXiv reading archive: usually ten ranked papers per day, expanding u
 
 **Website:** https://zhou-yang-quantum.github.io/daily-arXiv/
 
-The first entry is **arXiv-2026-10-06**, imported from the latest selection in the supplied ChatGPT conversation. The ranking and explanations are preserved; internal ChatGPT citation markers and conversational follow-up offers are removed. This is an imported selection, not an independently regenerated review of the papers.
+The first entry is **arXiv-2026-10-06**, regenerated from its verified announcement batch using the current selection rules. It contains twelve ranked papers with source-grounded summaries, background, and relevance notes. The dated v1 source catalog is preserved in `sources/2026-10-06.json`.
 
 ## Reading experience
 

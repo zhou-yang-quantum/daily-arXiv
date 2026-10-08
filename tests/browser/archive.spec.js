@@ -1,10 +1,13 @@
 import { test, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+
+const originalDigest = JSON.parse(readFileSync(new URL('../fixtures/2026-10-06.json', import.meta.url), 'utf8'));
 
 async function archiveFixture(route) {
   const response = await route.fetch();
   const data = await response.json();
-  // Keep browser fixtures independent of newly published daily digests.
-  data.days = data.days.filter((day) => day.date === '2026-10-06');
+  // Stable fixtures also survive an explicitly regenerated historical digest.
+  data.days = [structuredClone(originalDigest)];
   return { response, data };
 }
 

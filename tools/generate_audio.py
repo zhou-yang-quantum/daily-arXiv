@@ -172,14 +172,18 @@ def main():
                 seed = json.load(response)
         except (OSError, ValueError):
             pass
-    index = {'version': 1, 'days': {}}
-    save_index(index_file, index)
+    # Preserve previously verified, still-current recordings if a new day's
+    # synthesis or upload fails before this run can finish.
+    index = {'version': 1, 'days': {day['date']: seed['days'][day['date']] for day in days
+             if seed.get('days', {}).get(day['date'], {}).get('source_hash') == audio_source_hash(day)}}
+    if not args.local_only:
+        save_index(index_file, index)
     voice = None
     for day in days:
         prepared = json.loads((text_folder / (day['date'] + '.json')).read_text(encoding='utf-8'))
         prepared['source_hash'] = audio_source_hash(day)
         tag = 'audio-' + day['date'] + '-' + fingerprint(prepared)[:16]
-        existing = seed.get('days', {}).get(day['date'])
+        existing = None if args.local_only else seed.get('days', {}).get(day['date'])
         if existing and existing.get('content_hash') != fingerprint(prepared):
             existing = None
         if existing is None and not args.local_only:
@@ -200,8 +204,9 @@ def main():
                 if verified is None or verified['content_hash'] != manifest['content_hash']:
                     raise RuntimeError('Audio publication could not be verified')
             print('Rendered audio for ' + day['date'] + ': ' + str(round(manifest['day']['duration'] / 60, 1)) + ' minutes', flush=True)
-        index['days'][day['date']] = manifest
-        save_index(index_file, index)
+        if not args.local_only:
+            index['days'][day['date']] = manifest
+            save_index(index_file, index)
 
 
 if __name__ == '__main__':

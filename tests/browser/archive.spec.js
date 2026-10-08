@@ -39,7 +39,7 @@ test('search, topic filters, empty state, and reset', async ({ page }) => {
   await expect(page.locator('.paper-card')).toHaveCount(1);
   await expect(page.locator('.paper-card h3')).toContainText('Krylov');
   await page.getByRole('searchbox').fill('nothing-matches-this-query');
-  await expect(page.getByRole('heading', { name: 'No papers match just yet.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'No matching papers.' })).toBeVisible();
   await page.getByRole('button', { name: 'Clear filters' }).click();
   await expect(page.locator('.paper-card')).toHaveCount(10);
   await page.getByRole('button', { name: 'Quantum error correction', exact: true }).click();
@@ -57,7 +57,7 @@ test('saved papers and read status survive a reload', async ({ page }) => {
   await page.getByRole('button', { name: 'Saved 1' }).click();
   await expect(page.locator('.paper-card')).toHaveCount(1);
   await page.getByRole('button', { name: 'Unsave item 1', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Leave a bookmark for later.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'No saved papers.' })).toBeVisible();
 });
 
 test('mobile reading, deep links, preferences, and no horizontal overflow', async ({ page }) => {
@@ -136,7 +136,7 @@ test('twenty-paper days support mobile reading order and direct links without ve
   await expect(page.locator('.paper-card')).toHaveCount(20);
   await expect(page.locator('.paper-detail[open]')).toHaveCount(20);
   await expect(page.locator('.priority-tag')).toHaveCount(0);
-  await expect(page.locator('.hero-description')).toContainText('20 papers.');
+  await expect(page.locator('#paper-total')).toHaveText('20 papers');
   await expect(page.locator('.reading-order a')).toHaveCount(20);
   await page.getByRole('button', { name: 'Latest', exact: true }).click();
   await page.locator('.reading-order a').filter({ hasText: /^20$/ }).click();

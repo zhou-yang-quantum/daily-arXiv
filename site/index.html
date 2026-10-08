@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f7f6f2">
-  <meta name="description" content="A personal ranked selection of arXiv papers: quantum theory, dynamics, error correction, and ideas worth exploring.">
-  <title>daily-arXiv · A little signal in the noise</title>
+  <meta name="description" content="Daily arXiv papers with summaries, background, and relevance notes.">
+  <title>daily-arXiv</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="stylesheet" href="./vendor/katex/katex.min.css">
   <link rel="stylesheet" href="./styles.css">
@@ -19,7 +19,6 @@
   <header class="site-header">
     <div class="header-inner">
       <a class="brand" href="./" aria-label="daily-arXiv home"><span class="brand-symbol" aria-hidden="true">∿</span><span>daily<span class="brand-slash">/</span>arXiv</span></a>
-      <span class="header-caption">A little signal in the noise.</span>
       <nav aria-label="Main navigation">
         <button id="latest-button" class="nav-button active" aria-pressed="true">Latest</button>
         <button id="saved-button" class="nav-button" aria-pressed="false">Saved <span id="saved-count" class="count">0</span></button>
@@ -30,19 +29,16 @@
 
   <div class="page-shell">
     <aside class="sidebar" aria-label="Digest archive">
-      <div class="sidebar-heading"><span class="eyebrow">THE ARCHIVE</span><span id="archive-count" class="muted"></span></div>
+      <div class="sidebar-heading"><span class="eyebrow">Archive</span><span id="archive-count" class="muted"></span></div>
       <div id="archive-list" class="archive-list"></div>
-      <div class="sidebar-note"><span class="note-mark" aria-hidden="true">↗</span><p>Follow the idea,<br>not just the keyword.</p><span>Quantum theory. Open systems.<br>A few useful detours.</span></div>
-      <a class="repo-link" href="https://github.com/zhou-yang-quantum/daily-arXiv" target="_blank" rel="noopener noreferrer">View the repository <span aria-hidden="true">↗</span></a>
+      <a class="repo-link" href="https://github.com/zhou-yang-quantum/daily-arXiv" target="_blank" rel="noopener noreferrer">Repository <span aria-hidden="true">↗</span></a>
     </aside>
 
     <main id="main-content">
       <section class="digest-header" aria-labelledby="page-title">
-        <div class="digest-eyebrow"><span class="status-dot" aria-hidden="true"></span><span id="digest-kicker">YOUR PERSONAL RESEARCH BRIEFING</span></div>
-        <h1 id="page-title">Your next good read.</h1>
+        <h1 id="page-title">daily-arXiv</h1>
         <p id="date-subtitle" class="date-subtitle">Loading the archive…</p>
-        <p id="hero-description" class="hero-description">A focused selection. A wider perspective. Selected for the physics behind the result.</p>
-        <div class="digest-meta"><span id="paper-total">— papers</span><span class="meta-divider" aria-hidden="true"></span><span id="source-label">Summary · Background · Why it matters</span></div>
+        <div class="digest-meta"><span id="paper-total" aria-live="polite">— papers</span></div>
       </section>
 
       <section class="discovery" aria-label="Find papers">
@@ -54,28 +50,27 @@
       </section>
 
       <section id="reading-plan" class="reading-plan" aria-label="Suggested reading order">
-        <div><span class="eyebrow">WHERE TO START</span><p>Short on time? Begin with <strong id="top-three">1, 2 & 4</strong>.</p></div>
+        <span class="eyebrow">Reading order</span>
         <div id="reading-order" class="reading-order"></div>
       </section>
 
       <div class="results-toolbar">
-        <div><h2 id="results-title">The selection</h2><span id="results-count" class="muted" aria-live="polite"></span></div>
+        <div><h2 id="results-title">Papers</h2></div>
         <div class="view-actions"><button id="clear-filters" class="text-button" hidden>Clear filters</button><button id="view-button" class="text-button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h16"/></svg><span>Compact view</span></button></div>
       </div>
 
-      <div id="papers" class="paper-list" aria-live="polite"><div class="loading-state">Preparing your reading list…</div></div>
-      <section id="day-notes" class="day-notes" hidden><span class="eyebrow">THE BIGGER PICTURE</span><div id="day-notes-content" class="prose"></div></section>
+      <div id="papers" class="paper-list" aria-live="polite"><div class="loading-state">Loading papers…</div></div>
+      <section id="day-notes" class="day-notes" hidden><span class="eyebrow">Notes</span><div id="day-notes-content" class="prose"></div></section>
       <nav id="day-navigation" class="day-navigation" aria-label="Previous and next digest"><button id="previous-day" class="text-button">← Earlier selection</button><button id="next-day" class="text-button">Later selection →</button></nav>
-      <footer class="site-footer"><div class="footer-brand">daily<span>/</span>arXiv</div><p>A personal archive, built one good paper at a time.</p><p id="archive-status" class="footer-detail"></p><p class="footer-detail">Saved papers and read status stay in this browser.</p></footer>
+      <footer class="site-footer"><p id="archive-status" class="footer-detail"></p><p class="footer-detail">Saved papers and read status are stored in this browser.</p></footer>
     </main>
   </div>
 
   <dialog id="preferences-dialog" aria-labelledby="preferences-title">
-    <div class="dialog-heading"><span class="eyebrow">THE READING LENS</span><button id="close-preferences" class="icon-button" aria-label="Close preferences">✕</button></div>
-    <h2 id="preferences-title">Curiosity, with a filter.</h2>
-    <p class="muted">The preferences behind your daily selection.</p>
+    <div class="dialog-heading"><button id="close-preferences" class="icon-button" aria-label="Close preferences">✕</button></div>
+    <h2 id="preferences-title">Selection preferences</h2>
     <div id="preferences-content"></div>
-    <p class="dialog-footnote">These describe the selection criteria. Topic filters on this page only narrow the existing archive.</p>
+    <p class="dialog-footnote">Topic filters apply to the existing archive.</p>
   </dialog>
   <div id="toast" class="toast" role="status" hidden></div>
   <noscript><p class="noscript">Enable JavaScript to browse this archive, or <a href="./data/digests/2026-10-06.json">download the first digest as JSON</a>.</p></noscript>

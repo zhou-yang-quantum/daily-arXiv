@@ -127,7 +127,7 @@ function renderPaper(day, paper) {
   card.className = 'paper-card' + (read.has(key) ? ' is-read' : '');
   card.id = 'paper-' + day.date + '-' + paper.rank;
   card.dataset.date = day.date; card.dataset.rank = paper.rank; card.dataset.id = paper.id;
-  card.innerHTML = '<div class="paper-header"><span class="paper-rank">' + String(paper.rank).padStart(2, '0') + '</span><div class="paper-content"><div class="paper-label-row"><span class="paper-label">' + label + '</span><button class="bookmark-button" aria-label="' + (saved.has(paper.id) ? 'Unsave' : 'Save') + ' item ' + paper.rank + '" aria-pressed="' + saved.has(paper.id) + '" data-action="save">' + icons.bookmark + '</button></div><h3></h3><p class="authors"></p><div class="paper-tags"></div></div></div><details class="paper-detail"' + (!state.compact ? ' open' : '') + '><summary><span class="collapsed-label">Read the briefing</span><span class="expanded-label">Close briefing</span></summary><h4 class="section-label">SUMMARY</h4><div class="prose paper-summary"></div><section class="background-note"><h4 class="section-label">BACKGROUND & MOTIVATION</h4><div class="prose paper-background"></div></section><section class="why-note"><h4 class="section-label">WHY IT MATTERS FOR YOU</h4><div class="prose paper-why"></div></section><div class="paper-footer"><div class="paper-links"><a href="' + paper.url + '" target="_blank" rel="noopener noreferrer">Read on arXiv ' + icons.arrow + '</a><a class="secondary" href="https://arxiv.org/pdf/' + paper.id + '" target="_blank" rel="noopener noreferrer">PDF ' + icons.arrow + '</a><a class="secondary permalink" href="#date=' + day.date + '&paper=' + paper.rank + '" aria-label="Link to ' + label + '">Link</a></div><button class="read-button" aria-pressed="' + read.has(key) + '" data-action="read">' + icons.check + '<span>' + (read.has(key) ? 'Read' : 'Mark as read') + '</span></button></div></details>';
+  card.innerHTML = '<div class="paper-header"><span class="paper-rank">' + String(paper.rank).padStart(2, '0') + '</span><div class="paper-content"><div class="paper-label-row"><span class="paper-label">' + label + '</span><button class="bookmark-button" aria-label="' + (saved.has(paper.id) ? 'Unsave' : 'Save') + ' item ' + paper.rank + '" aria-pressed="' + saved.has(paper.id) + '" data-action="save">' + icons.bookmark + '</button></div><h3></h3><p class="authors"></p><div class="paper-tags"></div></div></div><details class="paper-detail"' + (!state.compact ? ' open' : '') + '><summary><span class="collapsed-label">Show details</span><span class="expanded-label">Hide details</span></summary><h4 class="section-label">SUMMARY</h4><div class="prose paper-summary"></div><section class="background-note"><h4 class="section-label">BACKGROUND & MOTIVATION</h4><div class="prose paper-background"></div></section><section class="why-note"><h4 class="section-label">WHY IT MATTERS FOR YOU</h4><div class="prose paper-why"></div></section><div class="paper-footer"><div class="paper-links"><a href="' + paper.url + '" target="_blank" rel="noopener noreferrer">arXiv ' + icons.arrow + '</a><a class="secondary" href="https://arxiv.org/pdf/' + paper.id + '" target="_blank" rel="noopener noreferrer">PDF ' + icons.arrow + '</a><a class="secondary permalink" href="#date=' + day.date + '&paper=' + paper.rank + '" aria-label="Link to ' + label + '">Link</a></div><button class="read-button" aria-pressed="' + read.has(key) + '" data-action="read">' + icons.check + '<span>' + (read.has(key) ? 'Read' : 'Mark as read') + '</span></button></div></details>';
   card.querySelector('h3').textContent = paper.title; math(card.querySelector('h3'));
   card.querySelector('.authors').textContent = (paper.authors ? paper.authors + '  ·  ' : '') + 'arXiv:' + paper.id;
   card.querySelector('.paper-tags').innerHTML = paper.topics.slice(0, 3).map((topic) => '<span class="paper-tag">' + escapeHTML(topic) + '</span>').join('');
@@ -140,13 +140,10 @@ function render() {
   const day = currentDay();
   const filtering = isArchiveSearch();
   const results = (filtering ? state.archive.days : [day]).flatMap((d) => d.papers.filter(matches).map((paper) => ({ day: d, paper })));
-  document.title = (state.savedOnly ? 'Saved papers' : filtering ? 'Search the archive' : day.title) + ' · daily-arXiv';
-  $('#page-title').textContent = state.savedOnly ? 'Ideas to come back to.' : filtering ? 'Follow your curiosity.' : day.title;
-  $('#digest-kicker').textContent = state.savedOnly ? 'YOUR PERSONAL READING SHELF' : filtering ? 'EXPLORE THE ARCHIVE' : 'YOUR PERSONAL RESEARCH BRIEFING';
-  $('#date-subtitle').textContent = filtering ? 'Across ' + state.archive.days.length + ' archived selection' + (state.archive.days.length === 1 ? '' : 's') : formatDate(day.date) + ' · ' + (day === state.archive.days[0] ? 'Latest selection' : 'From the archive');
-  $('#hero-description').textContent = state.savedOnly ? 'Keep the ideas that caught your attention. Pick up where you left off.' : filtering ? 'Find a familiar concept, an unfamiliar connection, or your next deep dive.' : day.papers.length + ' papers. A wider perspective. Selected for the physics behind the result.';
+  document.title = (state.savedOnly ? 'Saved papers' : filtering ? 'Search results' : day.title) + ' · daily-arXiv';
+  $('#page-title').textContent = state.savedOnly ? 'Saved papers' : filtering ? 'Search results' : day.title;
+  $('#date-subtitle').textContent = filtering ? state.archive.days.length + ' archived day' + (state.archive.days.length === 1 ? '' : 's') : formatDate(day.date);
   $('#paper-total').textContent = results.length + (results.length === 1 ? ' paper' : ' papers');
-  $('#source-label').textContent = 'Summary · Background · Why it matters';
   $('#latest-button').classList.toggle('active', !state.savedOnly);
   $('#latest-button').setAttribute('aria-pressed', !state.savedOnly);
   $('#saved-button').classList.toggle('active', state.savedOnly);
@@ -154,14 +151,11 @@ function render() {
   $('#saved-count').textContent = String(saved.size);
   $('#reading-plan').hidden = filtering;
   const order = day.reading_order;
-  $('#top-three').textContent = order.slice(0, 3).join(', ').replace(/, ([^,]*)$/, ' & $1');
   $('#reading-order').innerHTML = order.map((rank, i) => (i ? '<span aria-hidden="true">→</span>' : '') + '<a href="#date=' + day.date + '&paper=' + rank + '" data-rank="' + rank + '" aria-label="Jump to item ' + rank + '">' + rank + '</a>').join('');
-  $('#results-title').textContent = state.savedOnly ? 'Your saved papers' : filtering ? 'Matching papers' : 'The selection';
-  $('#results-count').textContent = filtering ? results.length + ' found' : 'Ranked by relevance';
   $('#clear-filters').hidden = !filtering;
   $('#papers').replaceChildren(...results.map(({ day: d, paper }) => renderPaper(d, paper)));
   if (!results.length) {
-    $('#papers').innerHTML = '<div class="empty-state"><h3>' + (state.savedOnly && !state.query && !state.topic ? 'Leave a bookmark for later.' : 'No papers match just yet.') + '</h3><p>' + (state.savedOnly ? 'Use the bookmark on any paper to keep it on your reading shelf.' : 'Try another concept, author, or topic. Search covers summaries and background, too.') + '</p><button class="text-button" data-action="reset">Browse the latest selection →</button></div>';
+    $('#papers').innerHTML = '<div class="empty-state"><h3>' + (state.savedOnly && !state.query && !state.topic ? 'No saved papers.' : 'No matching papers.') + '</h3><p>' + (state.savedOnly ? 'Use the bookmark button to save a paper.' : 'Try a different search or topic.') + '</p><button class="text-button" data-action="reset">Latest papers →</button></div>';
   }
   $('#day-notes').hidden = filtering || !day.notes;
   if (!filtering && day.notes) markdown($('#day-notes-content'), day.notes);
@@ -169,7 +163,7 @@ function render() {
   $('#day-navigation').hidden = filtering || state.archive.days.length < 2;
   $('#previous-day').disabled = index === state.archive.days.length - 1;
   $('#next-day').disabled = index === 0;
-  $('#archive-status').textContent = 'Latest entry: ' + state.archive.days[0].date + ' · Imported from a ChatGPT selection';
+  $('#archive-status').textContent = 'Latest digest: ' + state.archive.days[0].date;
   renderArchive(); renderTopics();
 }
 function openPaper(date, rank) {
@@ -206,7 +200,7 @@ $('#papers').addEventListener('click', (event) => {
     $('#saved-count').textContent = String(saved.size);
     button.setAttribute('aria-pressed', saved.has(id));
     button.setAttribute('aria-label', (saved.has(id) ? 'Unsave' : 'Save') + ' item ' + card.dataset.rank);
-    if (stored) toast(saved.has(id) ? 'Saved to your reading shelf' : 'Removed from saved papers');
+    if (stored) toast(saved.has(id) ? 'Paper saved' : 'Removed from saved papers');
     if (state.savedOnly) render();
   } else if (button?.dataset.action === 'read') {
     const key = card.dataset.date + ':' + card.dataset.id;
@@ -236,7 +230,7 @@ async function load() {
   } catch (error) {
     console.error(error);
     $('#date-subtitle').textContent = 'The archive could not be loaded.';
-    $('#papers').innerHTML = '<div class="empty-state"><h3>A brief interruption.</h3><p>Check your connection and reload to try again.</p><button class="text-button" id="retry-button">Try again →</button></div>';
+    $('#papers').innerHTML = '<div class="empty-state"><h3>Unable to load papers.</h3><p>Check your connection and reload.</p><button class="text-button" id="retry-button">Try again →</button></div>';
     $('#retry-button').addEventListener('click', load);
     $('#reading-plan').hidden = true;
   }
@@ -244,7 +238,7 @@ async function load() {
     const response = await fetch('./data/preferences.json');
     if (!response.ok) throw new Error('Preferences unavailable');
     const preferences = await response.json();
-    $('#preferences-content').innerHTML = '<h3>Make room for</h3><div class="preference-tags">' + preferences.prioritize.map((topic) => '<span>' + escapeHTML(topic) + '</span>').join('') + '</div><h3>Keep outside the frame</h3><ul>' + preferences.exclude.map((topic) => '<li>' + escapeHTML(topic) + '</li>').join('') + '</ul><h3>Stay curious</h3><ul>' + preferences.principles.map((principle) => '<li>' + escapeHTML(principle) + '</li>').join('') + '</ul>';
+    $('#preferences-content').innerHTML = '<h3>Prioritize</h3><div class="preference-tags">' + preferences.prioritize.map((topic) => '<span>' + escapeHTML(topic) + '</span>').join('') + '</div><h3>Exclude</h3><ul>' + preferences.exclude.map((topic) => '<li>' + escapeHTML(topic) + '</li>').join('') + '</ul><h3>Selection criteria</h3><ul>' + preferences.principles.map((principle) => '<li>' + escapeHTML(principle) + '</li>').join('') + '</ul>';
   } catch { $('#preferences-content').textContent = 'Selection preferences could not be loaded. Please reload to try again.'; }
 }
 load();

@@ -31,3 +31,4 @@ Thumbs.db
 .cache/
 test-results/
 playwright-report/
+/audio/index.json

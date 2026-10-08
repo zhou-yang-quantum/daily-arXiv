@@ -12,6 +12,8 @@
   <script defer src="./vendor/marked.umd.js"></script>
   <script defer src="./vendor/katex/katex.min.js"></script>
   <script defer src="./vendor/katex/contrib/auto-render.min.js"></script>
+  <script defer src="./reading.js"></script>
+  <script defer src="./audio.js"></script>
   <script defer src="./app.js"></script>
 </head>
 <body>
@@ -39,6 +41,7 @@
         <h1 id="page-title">daily-arXiv</h1>
         <p id="date-subtitle" class="date-subtitle">Loading the archive…</p>
         <div class="digest-meta"><span id="paper-total" aria-live="polite">— papers</span></div>
+        <div id="day-actions" class="reading-actions"><button id="copy-day" class="text-button">Copy for voice</button><button id="play-day" class="text-button" disabled>Play day</button></div>
       </section>
 
       <section class="discovery" aria-label="Find papers">
@@ -72,6 +75,17 @@
     <div id="preferences-content"></div>
     <p class="dialog-footnote">Topic filters apply to the existing archive.</p>
   </dialog>
+  <dialog id="copy-dialog" aria-labelledby="copy-title">
+    <div class="dialog-heading"><button id="close-copy" class="icon-button" aria-label="Close copy text">✕</button></div>
+    <h2 id="copy-title">Copy text</h2>
+    <p class="muted">Automatic copy is unavailable. Select and copy the text below.</p>
+    <textarea id="copy-text" aria-label="Text to copy" readonly></textarea>
+  </dialog>
+  <section id="audio-player" class="audio-player" aria-label="Digest audio player" hidden>
+    <div class="audio-heading"><span id="audio-title"></span><button id="audio-close" class="text-button" aria-label="Close audio player">Close</button></div>
+    <div class="audio-controls"><button id="audio-back" class="audio-seek" aria-label="Rewind 30 seconds">−30s</button><audio id="digest-audio" controls preload="metadata" aria-label="Audio playback"></audio><button id="audio-forward" class="audio-seek" aria-label="Forward 30 seconds">+30s</button></div>
+    <div class="audio-options"><span id="audio-status" role="status"></span><label>Speed <select id="audio-rate" aria-label="Playback speed"><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="1.75">1.75×</option><option value="2">2×</option></select></label><a id="audio-file" target="_blank" rel="noopener noreferrer">Open audio file</a></div>
+  </section>
   <div id="toast" class="toast" role="status" hidden></div>
   <noscript><p class="noscript">Enable JavaScript to browse this archive, or <a href="./data/digests/2026-10-06.json">download the first digest as JSON</a>.</p></noscript>
 </body>

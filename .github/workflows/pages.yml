@@ -15,6 +15,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
@@ -26,6 +29,22 @@ jobs:
           python-version: '3.12'
       - run: npm ci --no-audit --no-fund
       - run: python -m unittest discover -s tests
+      - uses: actions/cache@v4
+        with:
+          path: .cache/audio/voice
+          key: piper-ljspeech-medium-6f52a751-1
+      - name: Prepare offline audio dependencies
+        continue-on-error: true
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          python -m pip install -r requirements-speech.txt
+      - name: Generate or reuse dated audio releases
+        continue-on-error: true
+        timeout-minutes: 30
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python tools/generate_audio.py
       - run: npm run build
       - uses: actions/upload-pages-artifact@v4
         with:

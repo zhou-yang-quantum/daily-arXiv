@@ -15,6 +15,13 @@ The first entry is **arXiv-2026-10-06**, imported from the latest selection in t
 - Reading and compact views, local equation rendering, and arXiv/PDF links.
 - Saved papers and read status in this browser's local storage. They do not sync across devices; clearing browser data removes them.
 - Keyboard navigation, accessible controls, and print-friendly notes.
+- Copy a whole dated digest for ChatGPT Voice, or copy one paper, with TeX preserved.
+- Play a continuous day recording or a single paper, with speed and 30-second seek controls.
+
+Recordings use free offline speech synthesis and GitHub Release storage, with no
+additional GPT generation or model API billing. Android media controls support
+background playback and headphone actions where the browser and hardware expose
+them. [Audio generation and playback details](audio/README.md).
 
 ## Preview with Docker
 

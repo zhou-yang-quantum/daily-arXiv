@@ -17,5 +17,7 @@
 !content/**
 !incoming/
 !incoming/**
+!audio/
+!audio/**
 **/__pycache__/
 **/*.pyc

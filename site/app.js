@@ -16,6 +16,31 @@ function readStore(key) {
 }
 const saved = readStore('daily-arxiv:saved:v1');
 const read = readStore('daily-arxiv:read:v1');
+const player = new DigestAudio($('#audio-player'));
+function refreshAudioButtons() {
+  if (!state.archive) return;
+  const day = currentDay();
+  $('#play-day').disabled = !player.entry(day);
+  $('#play-day').title = player.entry(day) ? '' : 'Audio is not available yet';
+  for (const card of document.querySelectorAll('.paper-card')) {
+    const source = state.archive.days.find((entry) => entry.date === card.dataset.date);
+    const button = card.querySelector('[data-action="play"]');
+    button.disabled = !source || !player.entry(source, Number(card.dataset.rank));
+    button.title = button.disabled ? 'Audio is not available yet' : '';
+  }
+}
+async function copyText(text, message) {
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+    await navigator.clipboard.writeText(text);
+    toast(message);
+  } catch {
+    $('#copy-text').value = text;
+    $('#copy-dialog').showModal();
+    $('#copy-text').focus();
+    $('#copy-text').select();
+  }
+}
 function persist(key, set) {
   try { localStorage.setItem(key, JSON.stringify([...set])); return true; }
   catch { toast('Your browser could not save this change. It will last for this visit.'); return false; }
@@ -32,14 +57,14 @@ function formatDate(date, options = { weekday: 'long', month: 'long', day: 'nume
 function math(element) {
   if (!window.renderMathInElement) return;
   renderMathInElement(element, {
-    delimiters: [{ left: '\\[', right: '\\]', display: true }, { left: '$$', right: '$$', display: true }, { left: '\\(', right: '\\)', display: false }],
+    delimiters: [{ left: '\\[', right: '\\]', display: true }, { left: '$$', right: '$$', display: true }, { left: '\\(', right: '\\)', display: false }, { left: '$', right: '$', display: false }],
     throwOnError: false, trust: false, strict: 'ignore', maxExpand: 1000,
   });
 }
 function markdown(element, text) {
   // Keep TeX delimiters intact through Markdown's backslash processing.
   const equations = [];
-  const protectedText = text.replace(/\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)/g, (equation) => {
+  const protectedText = text.replace(DigestReading.mathPattern, (equation) => {
     equations.push(equation); return 'ARXIVMATHPLACEHOLDER' + (equations.length - 1) + 'END';
   });
   const parsed = marked.parse(protectedText, { breaks: false, gfm: true });
@@ -131,6 +156,13 @@ function renderPaper(day, paper) {
   card.querySelector('h3').textContent = paper.title; math(card.querySelector('h3'));
   card.querySelector('.authors').textContent = (paper.authors ? paper.authors + '  ·  ' : '') + 'arXiv:' + paper.id;
   card.querySelector('.paper-tags').innerHTML = paper.topics.slice(0, 3).map((topic) => '<span class="paper-tag">' + escapeHTML(topic) + '</span>').join('');
+  const actions = document.createElement('div');
+  actions.className = 'reading-actions paper-actions';
+  actions.innerHTML = '<button class="text-button" data-action="copy" aria-label="Copy item ' + paper.rank + '">Copy item</button><button class="text-button" data-action="play" aria-label="Play item ' + paper.rank + '">Play item</button>';
+  const play = actions.querySelector('[data-action="play"]');
+  play.disabled = !player.entry(day, paper.rank);
+  if (play.disabled) play.title = 'Audio is not available yet';
+  card.querySelector('.paper-content').append(actions);
   markdown(card.querySelector('.paper-summary'), paper.summary);
   markdown(card.querySelector('.paper-background'), paper.background);
   markdown(card.querySelector('.paper-why'), paper.why);
@@ -144,6 +176,9 @@ function render() {
   $('#page-title').textContent = state.savedOnly ? 'Saved papers' : filtering ? 'Search results' : day.title;
   $('#date-subtitle').textContent = filtering ? state.archive.days.length + ' archived day' + (state.archive.days.length === 1 ? '' : 's') : formatDate(day.date);
   $('#paper-total').textContent = results.length + (results.length === 1 ? ' paper' : ' papers');
+  $('#day-actions').hidden = filtering;
+  $('#play-day').disabled = !player.entry(day);
+  $('#play-day').title = player.entry(day) ? '' : 'Audio is not available yet';
   $('#latest-button').classList.toggle('active', !state.savedOnly);
   $('#latest-button').setAttribute('aria-pressed', !state.savedOnly);
   $('#saved-button').classList.toggle('active', state.savedOnly);
@@ -181,6 +216,9 @@ $('#topic-filters').addEventListener('click', (event) => { const button = event.
 let searchTimer;
 $('#search-input').addEventListener('input', (event) => { clearTimeout(searchTimer); state.query = event.target.value.trim(); searchTimer = setTimeout(() => { if (state.archive) { syncHash(); render(); } }, 180); });
 $('#clear-filters').addEventListener('click', reset);
+$('#copy-day').addEventListener('click', () => { if (state.archive) copyText(DigestReading.voiceText(currentDay()), 'Digest copied'); });
+$('#play-day').addEventListener('click', () => { if (state.archive) player.play(currentDay()); });
+$('#close-copy').addEventListener('click', () => $('#copy-dialog').close());
 $('#view-button').addEventListener('click', () => {
   state.compact = !state.compact;
   $('#view-button').setAttribute('aria-pressed', state.compact);
@@ -193,7 +231,13 @@ $('#papers').addEventListener('click', (event) => {
   const card = event.target.closest('.paper-card');
   if (!card) return;
   const button = event.target.closest('[data-action]');
-  if (button?.dataset.action === 'save') {
+  if (button?.dataset.action === 'copy' || button?.dataset.action === 'play') {
+    const day = state.archive.days.find((entry) => entry.date === card.dataset.date);
+    const paper = day?.papers.find((entry) => entry.rank === Number(card.dataset.rank));
+    if (!paper) return;
+    if (button.dataset.action === 'copy') copyText(DigestReading.itemText(day, paper), 'Item ' + paper.rank + ' copied');
+    else player.play(day, paper.rank);
+  } else if (button?.dataset.action === 'save') {
     const id = card.dataset.id;
     saved.has(id) ? saved.delete(id) : saved.add(id);
     const stored = persist('daily-arxiv:saved:v1', saved);
@@ -221,6 +265,10 @@ window.addEventListener('hashchange', applyHash);
 window.addEventListener('beforeprint', () => { document.querySelectorAll('.paper-detail').forEach((details) => { details.dataset.printWasOpen = details.open; details.open = true; }); });
 window.addEventListener('afterprint', () => { document.querySelectorAll('.paper-detail').forEach((details) => { details.open = details.dataset.printWasOpen === 'true'; }); });
 async function load() {
+  // Audio availability must never delay loading the written digest.
+  fetch('./data/audio/index.json').then(async (response) => {
+    if (response.ok) { player.index = await response.json(); refreshAudioButtons(); }
+  }).catch(() => {});
   try {
     const response = await fetch('./data/archive.json');
     if (!response.ok) throw new Error('Archive response ' + response.status);

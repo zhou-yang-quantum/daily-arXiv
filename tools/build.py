@@ -3,6 +3,7 @@ import json
 import shutil
 from pathlib import Path
 import datetime
+import hashlib
 
 if __package__:
     from .import_digest import parse_digest, MIN_PAPERS, MAX_PAPERS
@@ -12,6 +13,30 @@ else:
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
 TOPICS = ["Quantum field theory", "Non-equilibrium", "Quantum error correction", "Quantum simulation", "Quantum algorithms", "Exactly solvable models", "Statistical mechanics"]
+
+
+def audio_source_hash(day):
+    source = {key: day.get(key, '') for key in ('date', 'title', 'overview', 'notes')}
+    source['papers'] = [{key: paper.get(key, '') for key in ('rank', 'id', 'title', 'authors', 'summary', 'background', 'why')} for paper in day['papers']]
+    return hashlib.sha256(json.dumps(source, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+
+
+def load_audio_index(days, path):
+    index = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {'version': 1, 'days': {}}
+    allowed = {}
+    for day in days:
+        audio = index.get('days', {}).get(day['date'])
+        if not audio or audio.get('source_hash') != audio_source_hash(day):
+            continue  # Never play an old recording of a corrected digest.
+        expected = [(paper['rank'], paper['id']) for paper in day['papers']]
+        actual = [(paper['rank'], paper['id']) for paper in audio.get('items', [])]
+        if audio.get('date') != day['date'] or actual != expected:
+            raise ValueError('Audio manifest does not match the dated digest')
+        for track in [audio['day'], *audio['items']]:
+            if not track['url'].startswith('https://github.com/zhou-yang-quantum/daily-arXiv/releases/download/audio-') or track.get('duration', 0) <= 0:
+                raise ValueError('Invalid audio track')
+        allowed[day['date']] = audio
+    return {'version': 1, 'days': allowed}
 
 
 def load_archive(folder, incoming_folder=None):
@@ -85,6 +110,9 @@ def main():
     (DIST / "data").mkdir(exist_ok=True)
     (DIST / "data/archive.json").write_text(json.dumps({"topics": TOPICS, "days": days}, ensure_ascii=False) + "\n", encoding="utf-8")
     (DIST / "data/preferences.json").write_text((ROOT / "preferences.json").read_text(encoding="utf-8"), encoding="utf-8")
+    audio_folder = DIST / 'data/audio'
+    audio_folder.mkdir(exist_ok=True)
+    (audio_folder / 'index.json').write_text(json.dumps(load_audio_index(days, ROOT / 'audio/index.json'), ensure_ascii=False) + '\n', encoding='utf-8')
     (DIST / ".nojekyll").write_text("", encoding="utf-8")
     # Include reusable source digests for voice reading and portable export.
     exported = DIST / "data/digests"

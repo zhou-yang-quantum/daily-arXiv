@@ -13,6 +13,7 @@ COPY tests/*.py ./tests/
 COPY content/ ./content/
 COPY incoming/ ./incoming/
 COPY site/ ./site/
+COPY audio/ ./audio/
 COPY preferences.json ./preferences.json
 RUN python -m unittest discover -s tests
 RUN python tools/build.py

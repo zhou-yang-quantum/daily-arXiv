@@ -20,11 +20,17 @@ the October 8 run.
 
 A current-user Windows task, **Daily-arXiv startup catch-up**, starts a hidden
 watcher at Windows login. The watcher checks once per minute while the Codex app
-is running. It uses no model when the queue is empty. Opening Codex after the
+is running. A five-minute Windows trigger restarts it if it was interrupted;
+an already-running watcher is left alone. It uses no model when the queue is empty. Opening Codex after the
 scheduled time causes due days to be processed within about a minute. Overnight
 and multi-day absences are recovered from the persistent date queue; weekends are
 not digest days. Before 10:00, only older missing weekdays are due. Kernel locks
 prevent daily and startup triggers from generating the same day simultaneously.
+
+Attach the saved app task to this repository as a **local project**, so its
+workspace includes the project's `.cache/local-pipeline` directory. An absolute
+path in a projectless task's prompt does not add filesystem write access. A task
+running from the home folder can read this checkout yet fail to open `run.lock`.
 
 The watcher can be installed or started with:
 

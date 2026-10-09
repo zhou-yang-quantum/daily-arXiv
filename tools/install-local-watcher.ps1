@@ -24,9 +24,12 @@ if ($existing) {
     if ($matchingAction.Count -ne 1) { throw 'A different task already uses this name; refusing to replace it.' }
 }
 $action = New-ScheduledTaskAction -Execute $powershellPath -Argument $arguments -WorkingDirectory $repoRoot
-$trigger = New-ScheduledTaskTrigger -AtLogOn -User $userName
+$loginTrigger = New-ScheduledTaskTrigger -AtLogOn -User $userName
+# Restart an interrupted watcher without waiting for another Windows login.
+# IgnoreNew below keeps these periodic starts from duplicating a running watcher.
+$restartTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 5)
 $principal = New-ScheduledTaskPrincipal -UserId $userName -LogonType Interactive -RunLevel Limited
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
-Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description 'Check the daily-arXiv catch-up queue after login and when Codex opens. No AI calls when nothing is due.' -Force | Out-Null
+Register-ScheduledTask -TaskName $taskName -Action $action -Trigger @($loginTrigger, $restartTrigger) -Principal $principal -Settings $settings -Description 'Check the daily-arXiv catch-up queue after login and when Codex opens; restart an interrupted watcher every five minutes. No AI calls when nothing is due.' -Force | Out-Null
 if ($StartNow) { Start-ScheduledTask -TaskName $taskName }
 Get-ScheduledTask -TaskName $taskName | Select-Object TaskName,State,@{Name='RunAs';Expression={$_.Principal.UserId}} | ConvertTo-Json -Compress

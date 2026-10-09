@@ -11,15 +11,16 @@ import urllib.request
 import wave
 
 if __package__:
-    from .build import ROOT, load_archive, audio_source_hash
+    from .build import ROOT, load_archive, audio_source_hash, audio_script_hash
+    from .speech_text import make_script
 else:
-    from build import ROOT, load_archive, audio_source_hash
+    from build import ROOT, load_archive, audio_source_hash, audio_script_hash
+    from speech_text import make_script
 
 REPOSITORY = 'zhou-yang-quantum/daily-arXiv'
-VOICE = 'en_US-ljspeech-medium'
-REVISION = 'c10ece1aade47bb51c153c893d14e5bf8e5b7117'
-MODEL_SHA = '6f52a751e2349abe7a76735eb09dc1875298c77ea2342ffd2fef79ff81b87f22'
-CONFIG_SHA = '141d612cc0a95ed7efc1ca936b845c2364967f2e9217c5dbfcf69fc4d6c65860'
+VOICE = 'af_heart'
+MODEL_SHA = 'beb0d1848dee9a49da392cc3df26958d46cfa35d321edf434f52949153f0df3a'
+CONFIG_SHA = 'bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d'
 CACHE = ROOT / '.cache/audio'
 
 
@@ -32,7 +33,7 @@ def command(args, timeout=120):
 
 
 def fingerprint(prepared):
-    settings = {'voice': VOICE, 'voice_sha': MODEL_SHA, 'config_sha': CONFIG_SHA, 'piper': '1.4.2', 'encoder': 'mp3-64k-id3-v1', 'content': prepared}
+    settings = {'voice': VOICE, 'voice_sha': MODEL_SHA, 'config_sha': CONFIG_SHA, 'engine': 'kokoro-onnx-0.6.1', 'speed': 1.0, 'encoder': 'mp3-64k-id3-v1', 'content': prepared}
     return hashlib.sha256(json.dumps(settings, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
@@ -49,6 +50,8 @@ def cached_release(tag):
     asset = next(asset for asset in data['assets'] if asset['name'] == 'manifest.json')
     manifest = json.loads(command(['gh', 'api', f'repos/{REPOSITORY}/releases/assets/{asset["id"]}', '-H', 'Accept: application/octet-stream']))
     required = {'day.mp3'} | {f'item-{item["rank"]:02}.mp3' for item in manifest['items']}
+    if manifest.get('version') == 2:
+        required.add('speech.txt')
     if not required <= names:
         return None
     return manifest
@@ -57,11 +60,12 @@ def cached_release(tag):
 def download_voice():
     folder = CACHE / 'voice'
     folder.mkdir(parents=True, exist_ok=True)
-    base = f'https://huggingface.co/rhasspy/piper-voices/resolve/{REVISION}/en/en_US/ljspeech/medium/'
-    for suffix, expected in (('.onnx', MODEL_SHA), ('.onnx.json', CONFIG_SHA)):
-        target = folder / (VOICE + suffix)
+    base = 'https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1/'
+    for name, expected in (('kokoro-v1.0.onnx', MODEL_SHA), ('voices-v1.0.bin', CONFIG_SHA)):
+        target = folder / name
         if target.exists() and hashlib.sha256(target.read_bytes()).hexdigest() == expected:
             continue
+        print('Downloading pinned speech asset ' + target.name, flush=True)
         partial = target.with_suffix(target.suffix + '.partial')
         with urllib.request.urlopen(base + target.name, timeout=120) as response, partial.open('wb') as output:
             while chunk := response.read(1024 * 1024):
@@ -69,7 +73,7 @@ def download_voice():
         if hashlib.sha256(partial.read_bytes()).hexdigest() != expected:
             raise ValueError('Speech model checksum mismatch')
         partial.replace(target)
-    return folder / (VOICE + '.onnx')
+    return folder / 'kokoro-v1.0.onnx', folder / 'voices-v1.0.bin'
 
 
 def duration(path):
@@ -83,35 +87,12 @@ def save_index(path, index):
     temporary.replace(path)
 
 
-def render(prepared, tag, voice):
-    from piper import SynthesisConfig
-    folder = CACHE / 'renders' / tag
-    folder.mkdir(parents=True, exist_ok=True)
-    segments = [('intro', prepared['intro'])] + [(f'item-{item["rank"]:02}', item['text']) for item in prepared['items']]
-    if prepared['notes']:
-        segments.append(('notes', prepared['notes']))
-    paths, starts = [], {}
-    elapsed = 0.0
-    for name, text in segments:
-        target = folder / (name + '.wav')
-        # A successful segment can be reused after an interrupted generation.
-        if not target.exists():
-            partial = target.with_suffix('.partial.wav')
-            with wave.open(str(partial), 'wb') as wav:
-                voice.synthesize_wav(text, wav, syn_config=SynthesisConfig(length_scale=1.0))
-            partial.replace(target)
-        starts[name] = elapsed
-        elapsed += duration(target)
-        paths.append(target)
-        if name.startswith('item-'):
-            item = next(item for item in prepared['items'] if name == f'item-{item["rank"]:02}')
-            command(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-i', str(target), '-c:a', 'libmp3lame', '-b:a', '64k', '-write_xing', '1',
-                     '-metadata', 'title=' + prepared['title'] + ' — Item ' + str(item['rank']) + ' — ' + item['title'],
-                     '-metadata', 'artist=daily-arXiv', '-metadata', 'album=' + prepared['title'], str(folder / (name + '.mp3'))])
-    # Concatenate PCM into a single day file so playback never needs a background
-    # JavaScript callback to move to another paper while the screen is locked.
-    combined = folder / 'day.wav'
-    with wave.open(str(combined), 'wb') as output:
+def append_silence(output, seconds):
+    output.writeframes(b'\0' * round(seconds * output.getframerate()) * output.getnchannels() * output.getsampwidth())
+
+
+def concatenate(paths, target):
+    with wave.open(str(target), 'wb') as output:
         for index, path in enumerate(paths):
             with wave.open(str(path), 'rb') as source:
                 if index == 0:
@@ -119,14 +100,90 @@ def render(prepared, tag, voice):
                 elif (source.getframerate(), source.getnchannels(), source.getsampwidth()) != (output.getframerate(), output.getnchannels(), output.getsampwidth()):
                     raise ValueError('Incompatible speech segments')
                 output.writeframes(source.readframes(source.getnframes()))
+
+
+def text_chunks(text, limit=650):
+    words, chunk, size = text.split(), [], 0
+    for word in words:
+        if chunk and size + len(word) + 1 > limit:
+            yield ' '.join(chunk)
+            chunk, size = [], 0
+        chunk.append(word)
+        size += len(word) + 1
+    if chunk:
+        yield ' '.join(chunk)
+
+
+def render(prepared, tag, voice):
+    import numpy as np
+    folder = CACHE / 'renders' / tag
+    folder.mkdir(parents=True, exist_ok=True)
+    paths, items, elapsed = [], [], 0.0
+    for item in prepared['items']:
+        name = f'item-{item["rank"]:02}'
+        sections = item['sections']
+        if [section['name'] for section in sections] != ['heading', 'summary', 'background', 'why']:
+            raise ValueError('Speech sections are missing or out of order')
+        section_paths = []
+        for section in sections:
+            target = folder / (name + '-' + section['name'] + '.wav')
+            if not target.exists():
+                partial = target.with_suffix('.partial.wav')
+                with wave.open(str(partial), 'wb') as output:
+                    output.setnchannels(1)
+                    output.setsampwidth(2)
+                    output.setframerate(24000)
+                    for index, chunk in enumerate(text_chunks(section['text'])):
+                        samples, rate = voice.create(chunk, voice=VOICE, speed=1.0, lang='en-us')
+                        if rate != 24000 or not len(samples):
+                            raise ValueError('Speech synthesis returned invalid audio')
+                        if index:
+                            append_silence(output, 0.2)
+                        output.writeframes((np.clip(samples, -1, 1) * 32767).astype('<i2').tobytes())
+                partial.replace(target)
+            section_paths.append(target)
+        target = folder / (name + '.wav')
+        silence, boundaries, position = [], [], 0.0
+        with wave.open(str(target), 'wb') as output:
+            output.setnchannels(1)
+            output.setsampwidth(2)
+            output.setframerate(24000)
+            for index, section_path in enumerate(section_paths):
+                if index:
+                    pause = prepared['heading_pause_seconds'] if index == 1 else prepared['section_pause_seconds']
+                    silence.append({'start': round(position, 3), 'duration': pause})
+                    append_silence(output, pause)
+                    position += pause
+                length = duration(section_path)
+                boundaries.append({'name': sections[index]['name'], 'start': round(position, 3), 'duration': round(length, 3)})
+                with wave.open(str(section_path), 'rb') as source:
+                    output.writeframes(source.readframes(source.getnframes()))
+                position += length
+            append_silence(output, prepared['item_pause_seconds'])
+        length = duration(target)
+        command(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-i', str(target), '-c:a', 'libmp3lame', '-b:a', '64k', '-write_xing', '1',
+                 '-metadata', 'title=' + prepared['title'] + ' — Item ' + str(item['rank']) + ' — ' + item['title'],
+                 '-metadata', 'artist=daily-arXiv', '-metadata', 'album=' + prepared['title'], str(folder / (name + '.mp3'))])
+        items.append({key: item[key] for key in ('rank', 'id', 'title')} | {'start': round(elapsed, 3), 'duration': round(length, 3),
+                     'sections': boundaries, 'silence': silence})
+        elapsed += length
+        paths.append(target)
+        print('Rendered item ' + str(item['rank']), flush=True)
+    # The complete day is exactly the item PCM recordings joined in rank order.
+    combined = folder / 'day.wav'
+    concatenate(paths, combined)
     command(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-i', str(combined), '-c:a', 'libmp3lame', '-b:a', '64k', '-write_xing', '1',
              '-metadata', 'title=' + prepared['title'] + ' — Full digest', '-metadata', 'artist=daily-arXiv',
              '-metadata', 'album=' + prepared['title'], str(folder / 'day.mp3')], timeout=300)
+    (folder / 'speech.txt').write_text(prepared['text'] + '\n', encoding='utf-8')
     base = f'https://github.com/{REPOSITORY}/releases/download/{tag}/'
-    items = [{key: item[key] for key in ('rank', 'id', 'title')} | {'url': base + f'item-{item["rank"]:02}.mp3',
-             'start': round(starts[f'item-{item["rank"]:02}'], 3), 'duration': round(duration(folder / f'item-{item["rank"]:02}.wav'), 3)} for item in prepared['items']]
-    return {'date': prepared['date'], 'source_hash': prepared['source_hash'], 'content_hash': fingerprint(prepared), 'voice': VOICE, 'generated_at': datetime.now(timezone.utc).isoformat(),
-            'day': {'url': base + 'day.mp3', 'duration': round(elapsed, 3)}, 'items': items}, folder
+    for item in items:
+        item['url'] = base + f'item-{item["rank"]:02}.mp3'
+    return {'version': 2, 'date': prepared['date'], 'source_hash': prepared['source_hash'],
+            'speech_script_hash': prepared['speech_script_hash'], 'content_hash': fingerprint(prepared),
+            'voice': 'kokoro-' + VOICE, 'language': 'en-US', 'generated_at': datetime.now(timezone.utc).isoformat(),
+            'speech_url': base + 'speech.txt', 'day': {'url': base + 'day.mp3', 'duration': round(duration(combined), 3)}, 'items': items}, folder
+
 
 
 def publish(manifest, folder, tag):
@@ -138,13 +195,15 @@ def publish(manifest, folder, tag):
     if view.returncode:
         notes = folder / 'release-notes.md'
         notes.write_text('Offline synthetic reading of ' + manifest['date'] + '.\n\n'
-            'Voice: Piper LJSpeech medium (public-domain training dataset).\n'
-            'Math pronunciation: KaTeX MathML and Speech Rule Engine.\n'
+            'Voice: Kokoro af_heart, American English; free local CPU synthesis.\n'
+            'Model and training-data credits: https://huggingface.co/hexgrad/Kokoro-82M\n'
+            'Math: Codex-authored exact English substitutions; surrounding prose preserved.\n'
+            'Sections have 1.5-second pauses; the full day contains only item recordings.\n'
             'Source digest: https://github.com/' + REPOSITORY + '/blob/main/incoming/' + manifest['date'] + '.md\n'
             'Generated without model API calls.\n', encoding='utf-8')
         command(['gh', 'release', 'create', tag, '--repo', REPOSITORY, '--target', os.environ.get('GITHUB_SHA', 'main'),
                  '--title', 'arXiv-' + manifest['date'] + ' audio', '--notes-file', str(notes), '--latest=false'])
-    command(['gh', 'release', 'upload', tag, '--repo', REPOSITORY, '--clobber', *[str(p) for p in sorted(folder.glob('*.mp3'))]], timeout=600)
+    command(['gh', 'release', 'upload', tag, '--repo', REPOSITORY, '--clobber', *[str(p) for p in sorted(folder.glob('*.mp3'))], str(folder / 'speech.txt')], timeout=600)
     command(['gh', 'release', 'upload', tag, '--repo', REPOSITORY, '--clobber', str(path)])
 
 
@@ -154,11 +213,20 @@ def main():
     parser.add_argument('--local-only', action='store_true')
     args = parser.parse_args()
     CACHE.mkdir(parents=True, exist_ok=True)
-    days = load_archive(ROOT / 'content/digests', ROOT / 'incoming')
+    all_days = load_archive(ROOT / 'content/digests', ROOT / 'incoming')
+    days = all_days
     if args.date:
         days = [day for day in days if day['date'] == args.date]
         if not days:
             raise ValueError('Requested digest does not exist')
+    scripts = {}
+    for day in days:
+        script_path = ROOT / 'audio/scripts' / (day['date'] + '.json')
+        if script_path.exists():
+            script = json.loads(script_path.read_text(encoding='utf-8'))
+            if script != make_script(day, script.get('pronunciations', [])):
+                raise ValueError('Speech script is stale or does not match ' + day['date'])
+            scripts[day['date']] = script
     source = CACHE / 'days.json'
     source.write_text(json.dumps(days, ensure_ascii=False), encoding='utf-8')
     text_folder = CACHE / 'text'
@@ -174,14 +242,21 @@ def main():
             pass
     # Preserve previously verified, still-current recordings if a new day's
     # synthesis or upload fails before this run can finish.
-    index = {'version': 1, 'days': {day['date']: seed['days'][day['date']] for day in days
+    index = {'version': 1, 'days': {day['date']: seed['days'][day['date']] for day in all_days
              if seed.get('days', {}).get(day['date'], {}).get('source_hash') == audio_source_hash(day)}}
     if not args.local_only:
         save_index(index_file, index)
     voice = None
     for day in days:
+        if day['date'] not in scripts:
+            if day['date'] in index['days']:
+                print('Kept existing recording for ' + day['date'] + ' (no new speech script)', flush=True)
+            else:
+                print('Audio needs an English math companion for ' + day['date'], flush=True)
+            continue
         prepared = json.loads((text_folder / (day['date'] + '.json')).read_text(encoding='utf-8'))
         prepared['source_hash'] = audio_source_hash(day)
+        prepared['speech_script_hash'] = audio_script_hash(scripts[day['date']])
         tag = 'audio-' + day['date'] + '-' + fingerprint(prepared)[:16]
         existing = None if args.local_only else seed.get('days', {}).get(day['date'])
         if existing and existing.get('content_hash') != fingerprint(prepared):
@@ -195,9 +270,16 @@ def main():
             print('Reused audio for ' + day['date'], flush=True)
         else:
             if voice is None:
-                from piper import PiperVoice
-                voice = PiperVoice.load(str(download_voice()), use_cuda=False)
+                from kokoro_onnx import Kokoro
+                import onnxruntime as runtime
+                model, voices = download_voice()
+                options = runtime.SessionOptions()
+                options.intra_op_num_threads = min(4, os.cpu_count() or 2)
+                options.inter_op_num_threads = 1
+                session = runtime.InferenceSession(str(model), sess_options=options, providers=['CPUExecutionProvider'])
+                voice = Kokoro.from_session(session, str(voices))
             manifest, folder = render(prepared, tag, voice)
+            (folder / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
             if not args.local_only:
                 publish(manifest, folder, tag)
                 verified = cached_release(tag)

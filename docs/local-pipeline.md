@@ -95,7 +95,8 @@ invalid scientific metadata becomes needs-review, preventing repeated generation
 of the same unsupported result. Logs, inputs, drafts, and state live in the ignored
 `.cache/local-pipeline/` directory. Publication validates the date, 10–20 unique
 consecutive ranks, explanation sections, exact v1 titles, and IDs belonging to the
-verified batch before writing one protected Markdown file to GitHub. GitHub Pages
+verified batch, plus complete equation pronunciations, before writing the
+protected Markdown and English-math companion together in one GitHub commit. GitHub Pages
 then deploys through the existing workflow.
 
 Clearing browser data does not affect this queue. Removing the local cache

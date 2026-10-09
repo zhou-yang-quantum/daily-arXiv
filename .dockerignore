@@ -4,10 +4,12 @@
 !package.json
 !package-lock.json
 !preferences.json
+!requirements-speech.txt
 !tools/
 !tools/build.py
 !tools/import_digest.py
 !tools/publish_digest.py
+!tools/speech_text.py
 !tests/
 !tests/test_archive.py
 !tests/test_publisher.py

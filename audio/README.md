@@ -6,15 +6,28 @@ deployment small. Each date has one continuous MP3 and a separate MP3 per paper.
 The release identity includes the source text, speech preparation, and voice.
 Unchanged recordings are reused; corrected digests cannot use old recordings.
 
-Speech is generated on a standard public GitHub Actions CPU runner using
-[Piper 1.4.2](https://github.com/OHF-Voice/piper1-gpl) and the checksum-pinned
-[LJSpeech medium voice](https://huggingface.co/rhasspy/piper-voices/blob/main/en/en_US/ljspeech/medium/MODEL_CARD),
-whose training dataset is public domain. Math uses KaTeX MathML and
-[Speech Rule Engine](https://github.com/Speech-Rule-Engine/speech-rule-engine).
-No model API, purchased credits, or additional GPT generation is involved.
-The Piper program is GPL-3.0; Speech Rule Engine is Apache-2.0. No model binary or
-Piper code is redistributed by the website. Voice attribution is retained in
-each release.
+New recordings use free CPU synthesis with [Kokoro ONNX](https://github.com/thewh1teagle/kokoro-onnx),
+the `af_heart` American-English voice, and checksum-pinned model/voice assets.
+The runtime is MIT and the [model is Apache-2.0](https://huggingface.co/hexgrad/Kokoro-82M);
+the model card records training-data credits. Voice attribution is retained in
+each release. The roughly 354 MB of model assets stay in an ignored local cache
+or GitHub Actions cache, not in Git history or the published website.
+
+The same subscribed Codex research run returns a compact equation-to-English
+pronunciation list. It adds some output tokens but no second model call or paid
+speech API. The controller publishes the digest and
+`audio/scripts/YYYY-MM-DD.json` together in one protected Git commit. Validation
+requires every distinct item equation exactly once. Code creates the spoken
+version from the original title, authors, ID, summary, background, and relevance:
+only math notation and acronym pronunciation change. Redundant inline v1 source
+links are omitted from rendering and speech; the footer arXiv link remains.
+`speech.txt` in each new release contains the actual English narration.
+
+The generator checks the source and pronunciation hashes. A changed equation
+reading cannot silently use an old recording. Missing or stale pronunciation
+metadata stops new audio rather than falling back to symbol-by-symbol reading.
+The October 9 test and future daily deliveries use this pipeline; earlier
+recordings are retained until matching new pronunciation companions are supplied.
 
 Native audio playback and Media Session handlers provide play/pause, seeking,
 position, speed, and lock-screen metadata. Headphone previous/next track actions
@@ -23,10 +36,13 @@ controls depend on the Android browser and headphones. Use Chrome or another
 browser with background media support; open/download the MP3 for an Android audio
 player if a browser or embedded app restricts background playback.
 
-The whole-day recording is one file, so a sleeping page does not have to run
-JavaScript between papers. Per-item recordings stop naturally at the item end.
-Mathematical notation is pronounced using fixed rules rather than rewritten by
-an LLM; inspect unusual formulas in the written digest if pronunciation is unclear.
+The whole-day recording is the item PCM recordings concatenated in rank order,
+starting with Item 1 and without a daily overview or closing notes. A sleeping
+page does not have to run JavaScript between papers. There are 1.5 seconds of real
+silence between summary, background, and relevance, plus a brief heading pause
+and an item-end pause. Per-item recordings stop naturally at the item end.
+Kokoro is a speech model, not a physics solver: correctness comes from the
+checked English script, and unusual names can still need pronunciation corrections.
 Audio failures leave reading/copy available and do not block text publication.
 
 For a local refresh of an already published audio index:
@@ -36,6 +52,8 @@ python -c "import urllib.request; urllib.request.urlretrieve('https://zhou-yang-
 docker compose up --build -d --wait
 ```
 
-For offline rendering, install Node build dependencies, Python speech dependencies
-and FFmpeg, then run `python tools/generate_audio.py --local-only --date YYYY-MM-DD`.
+For offline rendering, install Node build dependencies, Python speech dependencies,
+FFmpeg and eSpeak NG, then run `python tools/generate_audio.py --local-only --date YYYY-MM-DD`.
+Alternatively, build `docker build -f audio/Dockerfile -t daily-arxiv-speech .` and
+mount the repository at `/app` when running the image with `--local-only --date YYYY-MM-DD`.
 Publishing uses the existing GitHub CLI login or the workflow's scoped token.

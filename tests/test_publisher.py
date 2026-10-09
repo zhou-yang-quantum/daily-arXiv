@@ -1,11 +1,53 @@
 import base64
 import unittest
+import urllib.error
 from unittest.mock import patch
 from tools.publish_digest import publish, check_date
+from tools.speech_text import make_script
+from tools.import_digest import parse_digest
 from test_archive import example_digest
 
 
 class PublisherTests(unittest.TestCase):
+    @patch('tools.publish_digest.git_request')
+    @patch('tools.publish_digest.api_request', return_value=None)
+    def test_text_and_speech_are_published_in_one_protected_commit(self, api, git):
+        text = example_digest(include_priority=False)
+        script = make_script(parse_digest(text), [])
+        git.side_effect = [{'object': {'sha': 'base'}}, {'tree': {'sha': 'base-tree'}},
+                           {'sha': 'new-tree'}, {'sha': 'new-commit'}, {'object': {'sha': 'new-commit'}}]
+        result = publish(text, 'test-credential', speech_script=script)
+        self.assertEqual(result['commit'], 'new-commit')
+        tree = git.call_args_list[2].args[3]
+        self.assertEqual({entry['path'] for entry in tree['tree']}, {'incoming/2026-10-06.md', 'audio/scripts/2026-10-06.json'})
+        self.assertEqual(tree['base_tree'], 'base-tree')
+        self.assertEqual(git.call_args_list[3].args[3]['parents'], ['base'])
+        self.assertEqual(git.call_args_list[4].args[3], {'sha': 'new-commit', 'force': False})
+        self.assertEqual([call.args[0] for call in api.call_args_list], ['GET', 'GET'])
+
+    @patch('tools.publish_digest.api_request')
+    def test_stale_speech_never_reaches_github(self, api):
+        text = example_digest(include_priority=False)
+        script = make_script(parse_digest(text), [])
+        script['source_hash'] = 'stale'
+        with self.assertRaises(ValueError):
+            publish(text, 'test-credential', speech_script=script)
+        api.assert_not_called()
+
+    @patch('tools.publish_digest.git_request')
+    @patch('tools.publish_digest.api_request', return_value=None)
+    def test_branch_race_rebuilds_against_new_parent_without_force(self, api, git):
+        text = example_digest(include_priority=False)
+        script = make_script(parse_digest(text), [])
+        git.side_effect = [
+            {'object': {'sha': 'first'}}, {'tree': {'sha': 'tree-first'}}, {'sha': 'tree-one'}, {'sha': 'commit-one'},
+            urllib.error.HTTPError('https://api.github.com', 422, 'branch moved', {}, None),
+            {'object': {'sha': 'second'}}, {'tree': {'sha': 'tree-second'}}, {'sha': 'tree-two'}, {'sha': 'commit-two'}, {}]
+        result = publish(text, 'test-credential', speech_script=script)
+        self.assertEqual(result['commit'], 'commit-two')
+        self.assertEqual(git.call_args_list[8].args[3]['parents'], ['second'])
+        self.assertEqual(git.call_args_list[9].args[3]['force'], False)
+
     @patch('tools.publish_digest.api_request')
     def test_uploads_only_the_dated_markdown_to_main(self, api):
         api.side_effect = [None, {'commit': {'sha': 'a' * 40}}]

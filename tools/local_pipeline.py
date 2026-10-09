@@ -18,10 +18,12 @@ from zoneinfo import ZoneInfo
 if __package__:
     from . import collect_arxiv, publish_digest
     from .import_digest import parse_digest
+    from .speech_text import make_script
 else:
     import collect_arxiv
     import publish_digest
     from import_digest import parse_digest
+    from speech_text import make_script
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME = ROOT / '.cache' / 'local-pipeline'
@@ -29,8 +31,12 @@ CONFIG = ROOT / 'local-pipeline.json'
 SCHEMA = {
     'type': 'object', 'additionalProperties': False,
     'properties': {'status': {'type': 'string', 'enum': ['ready', 'insufficient']},
-                   'reason': {'type': 'string'}, 'markdown': {'type': 'string'}},
-    'required': ['status', 'reason', 'markdown'],
+                   'reason': {'type': 'string'}, 'markdown': {'type': 'string'},
+                   'math_pronunciations': {'type': 'array', 'items': {
+                       'type': 'object', 'additionalProperties': False,
+                       'properties': {'latex': {'type': 'string'}, 'spoken': {'type': 'string'}},
+                       'required': ['latex', 'spoken']}}},
+    'required': ['status', 'reason', 'markdown', 'math_pronunciations'],
 }
 COMPLETE = {'published', 'no-batch'}
 
@@ -317,6 +323,7 @@ def validate_result(result, snapshot, day):
             raise ValueError(f"Title does not match verified v1 metadata for {paper['id']}")
         if 'priority' in paper:
             raise ValueError('New digests must omit priority verdicts')
+    make_script(digest, result.get('math_pronunciations', []))
     return text, digest
 
 
@@ -363,7 +370,9 @@ def run_pipeline(limit=None, automatic=False):
                 markdown, digest = validate_result(result, snapshot, day)
                 draft = RUNTIME / 'runs' / day / f'{day}.md'
                 draft.write_text(markdown, encoding='utf-8')
-                publication = publish_digest.publish(markdown, token)
+                script = make_script(digest, result.get('math_pronunciations', []))
+                (draft.parent / 'speech.json').write_text(json.dumps(script, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+                publication = publish_digest.publish(markdown, token, speech_script=script)
                 if publish_digest.check_date(day, token)['status'] != 'exists':
                     raise RuntimeError('GitHub did not confirm the published file')
                 state['days'][day] = {'status': 'published', 'papers': len(digest['papers']),

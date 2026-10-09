@@ -62,6 +62,7 @@ function math(element) {
   });
 }
 function markdown(element, text) {
+  text = DigestReading.removeSourceLinks(text);
   // Keep TeX delimiters intact through Markdown's backslash processing.
   const equations = [];
   const protectedText = text.replace(DigestReading.mathPattern, (equation) => {

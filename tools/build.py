@@ -21,6 +21,10 @@ def audio_source_hash(day):
     return hashlib.sha256(json.dumps(source, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
 
 
+def audio_script_hash(script):
+    return hashlib.sha256(json.dumps(script, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+
+
 def load_audio_index(days, path):
     index = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {'version': 1, 'days': {}}
     allowed = {}
@@ -28,6 +32,9 @@ def load_audio_index(days, path):
         audio = index.get('days', {}).get(day['date'])
         if not audio or audio.get('source_hash') != audio_source_hash(day):
             continue  # Never play an old recording of a corrected digest.
+        script_path = ROOT / 'audio/scripts' / (day['date'] + '.json')
+        if script_path.exists() and audio.get('speech_script_hash') != audio_script_hash(json.loads(script_path.read_text(encoding='utf-8'))):
+            continue  # A corrected pronunciation must not reuse its old audio.
         expected = [(paper['rank'], paper['id']) for paper in day['papers']]
         actual = [(paper['rank'], paper['id']) for paper in audio.get('items', [])]
         if audio.get('date') != day['date'] or actual != expected:

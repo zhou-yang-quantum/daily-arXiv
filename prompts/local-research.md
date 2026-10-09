@@ -32,6 +32,22 @@ source-grounded summary + background/motivation + why-it-matters explanations.
 Explain what was done, the main result, important limits, unfamiliar concepts, and
 why each paper fits my interests or provides a useful broader connection.
 
+Also return math_pronunciations as a list: one object with latex and spoken fields for each
+distinct math expression in the item titles, summaries, backgrounds, and relevance
+sections. latex must copy the exact expression including its delimiters. spoken
+must be a faithful, natural English reading of that exact expression, as a
+physicist would say it aloud. Preserve grouping, fractions, indices, exponents,
+operators, relations, limits, sums, and qualifiers. For example, $x^2$ is "x
+squared", not "x caret two"; $I(A:C|B)$ is "the conditional mutual information
+between A and C given B"; a fraction should say what is divided by what. Do not
+substitute an interpretation, approximation, or new result for the expression.
+Include every distinct expression exactly once; use an empty list if there are
+none or status is insufficient. This small list supplies an audio version by
+replacing only math; do not duplicate or paraphrase the digest's prose.
+
+Use the arXiv link at the bottom of each item, without redundant inline links
+labeled "v1 paper", "v1 abstract", or similar. Still verify claims from v1 sources.
+
 Return only the final JSON object matching the supplied schema. If at least ten
 appropriate papers cannot be supported, set status to "insufficient", explain
 briefly in reason, and leave markdown empty. Otherwise set status to "ready",

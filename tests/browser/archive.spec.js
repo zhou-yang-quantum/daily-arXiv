@@ -155,7 +155,7 @@ test('voice copying keeps full dated sections and TeX without rendered math dupl
   await page.addInitScript(() => { Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (text) => { window.copiedText = text; } }, configurable: true }); });
   await page.route('**/data/archive.json', async (route) => {
     const { response, data } = await archiveFixture(route);
-    data.days[0].papers[0].summary = 'Exact **claim**, with \\(x^2+1\\), $z=3/2$, and [a source](https://arxiv.org/abs/2610.03864).';
+    data.days[0].papers[0].summary = 'Exact **claim**, with \\(x^2+1\\), $z=3/2$, and [a source](https://arxiv.org/abs/2610.03864). [v1 paper](https://arxiv.org/html/2610.03864v1)';
     await route.fulfill({ response, json: data });
   });
   await page.goto('/');
@@ -164,6 +164,8 @@ test('voice copying keeps full dated sections and TeX without rendered math dupl
   expect(full).toContain('BEGIN DIGEST: arXiv-2026-10-06');
   expect(full).toContain('arXiv-2026-10-06 — Item 10');
   expect(full).toContain('Exact claim, with \\(x^2+1\\), $z=3/2$, and a source.');
+  expect(full).not.toContain('v1 paper');
+  await expect(page.getByRole('link', { name: 'v1 paper', exact: true })).toHaveCount(0);
   expect(full).not.toContain('**');
   expect(full).not.toContain('DIGESTMATH');
   await page.getByRole('button', { name: 'Copy item 1', exact: true }).click();

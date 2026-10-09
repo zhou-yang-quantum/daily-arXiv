@@ -10,8 +10,10 @@ import urllib.request
 
 if __package__:
     from .import_digest import parse_digest
+    from .speech_text import make_script
 else:
     from import_digest import parse_digest
+    from speech_text import make_script
 
 REPOSITORY = "zhou-yang-quantum/daily-arXiv"
 API_ROOT = f"https://api.github.com/repos/{REPOSITORY}/contents/incoming/"
@@ -48,10 +50,52 @@ def check_date(date, token):
     return {"date": date, "status": "exists" if existing is not None else "missing"}
 
 
-def publish(text, token):
+def git_request(method, path, token, payload=None):
+    request = urllib.request.Request(
+        f'https://api.github.com/repos/{REPOSITORY}/git/' + path, method=method,
+        data=json.dumps(payload).encode('utf-8') if payload is not None else None,
+        headers={'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json',
+                 'Content-Type': 'application/json', 'User-Agent': 'daily-arxiv-publisher/1.0'})
+    with urllib.request.urlopen(request, timeout=30) as response:
+        return json.load(response)
+
+
+def publish_bundle(text, script, token):
+    """One Git commit delivers text and its matching speech metadata together."""
+    date = script['date']
+    for attempt in range(3):
+        # Never overwrite another run's dated entry, even if the branch moved.
+        existing = api_request('GET', date, token)
+        if existing is not None:
+            previous = base64.b64decode(existing['content']).decode('utf-8')
+            if previous.rstrip() != text.rstrip():
+                raise ValueError(f'{date} already exists with different content; refusing to overwrite it')
+            return None
+        base = git_request('GET', 'ref/heads/main', token)['object']['sha']
+        tree = git_request('GET', 'commits/' + base, token)['tree']['sha']
+        entries = [('incoming/' + date + '.md', text),
+                   ('audio/scripts/' + date + '.json', json.dumps(script, ensure_ascii=False, indent=2) + '\n')]
+        updated = git_request('POST', 'trees', token, {'base_tree': tree, 'tree': [
+            {'path': path, 'mode': '100644', 'type': 'blob', 'content': content} for path, content in entries]})
+        commit = git_request('POST', 'commits', token, {
+            'message': f'Add arXiv-{date} selection and speech pronunciations',
+            'tree': updated['sha'], 'parents': [base]})
+        try:
+            git_request('PATCH', 'refs/heads/main', token, {'sha': commit['sha'], 'force': False})
+            return commit['sha']
+        except urllib.error.HTTPError as error:
+            if error.code not in (409, 422) or attempt == 2:
+                raise RuntimeError(f'GitHub returned HTTP {error.code}; publication was not confirmed') from None
+    raise RuntimeError('Publication was not confirmed')
+
+
+def publish(text, token, speech_script=None):
     digest = parse_digest(text)
     date = digest["date"]
     count = len(digest["papers"])
+    if speech_script is not None:
+        if speech_script != make_script(digest, speech_script.get('pronunciations', [])):
+            raise ValueError('Speech metadata does not match the digest')
     existing = api_request("GET", date, token)
     if existing is not None:
         if existing.get("encoding") != "base64":
@@ -60,6 +104,10 @@ def publish(text, token):
         if previous.rstrip() != text.rstrip():
             raise ValueError(f"{date} already exists with different content; refusing to overwrite it")
         return {"date": date, "papers": count, "status": "already-delivered"}
+    if speech_script is not None:
+        sha = publish_bundle(text, speech_script, token)
+        return {'date': date, 'papers': count, 'status': 'publication-queued' if sha else 'already-delivered',
+                'commit': sha, 'website': f'https://zhou-yang-quantum.github.io/daily-arXiv/#date={date}'}
     result = api_request("PUT", date, token, {
         "message": f"Add arXiv-{date} selection",
         "content": base64.b64encode(text.encode("utf-8")).decode("ascii"),

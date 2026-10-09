@@ -2,6 +2,9 @@
 (function (root) {
   'use strict';
   const mathPattern = /\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)|\$\$[\s\S]*?\$\$|(?<!\\)\$(?!\$)(?:\\.|[^$\n])+?\$/g;
+  function removeSourceLinks(source) {
+    return (source || '').replace(/\s*\[v1\b[^\]]*\]\(https:\/\/arxiv\.org\/(?:html|abs)\/[^)]+\)/gi, '');
+  }
   function decode(value) {
     const named = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', ndash: '–', mdash: '—' };
     return value.replace(/&(#x[\da-f]+|#\d+|[a-z]+);/gi, (all, name) => {
@@ -14,6 +17,7 @@
   }
   function plainText(source) {
     if (!source) return '';
+    source = removeSourceLinks(source);
     const equations = [];
     let prefix = 'DIGESTMATH';
     while (source.includes(prefix)) prefix += 'X';
@@ -60,5 +64,5 @@
       + 'Do not summarize, add information, silently correct equations, or reconstruct missing text. If the exact source is unavailable, stop and say so.\n\n'
       + 'BEGIN DIGEST: ' + day.title + '\n\n' + dayText(day) + '\n\nEND DIGEST: ' + day.title;
   }
-  root.DigestReading = Object.freeze({ plainText, itemText, dayText, voiceText, mathPattern });
+  root.DigestReading = Object.freeze({ plainText, itemText, dayText, voiceText, mathPattern, removeSourceLinks });
 })(globalThis);

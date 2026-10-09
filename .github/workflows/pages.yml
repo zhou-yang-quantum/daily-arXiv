@@ -15,7 +15,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 75
     permissions:
       contents: write
     steps:
@@ -32,16 +32,16 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: .cache/audio/voice
-          key: piper-ljspeech-medium-6f52a751-1
+          key: kokoro-v1-af-heart-beb0d184-bca610b8-1
       - name: Prepare offline audio dependencies
         continue-on-error: true
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg
+          sudo apt-get install -y -qq ffmpeg espeak-ng
           python -m pip install -r requirements-speech.txt
       - name: Generate or reuse dated audio releases
         continue-on-error: true
-        timeout-minutes: 30
+        timeout-minutes: 60
         env:
           GH_TOKEN: ${{ github.token }}
         run: python tools/generate_audio.py

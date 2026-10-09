@@ -50,7 +50,7 @@ def cached_release(tag):
     asset = next(asset for asset in data['assets'] if asset['name'] == 'manifest.json')
     manifest = json.loads(command(['gh', 'api', f'repos/{REPOSITORY}/releases/assets/{asset["id"]}', '-H', 'Accept: application/octet-stream']))
     required = {'day.mp3'} | {f'item-{item["rank"]:02}.mp3' for item in manifest['items']}
-    if manifest.get('version') == 2:
+    if manifest.get('version') in (2, 3):
         required.add('speech.txt')
     if not required <= names:
         return None
@@ -122,7 +122,8 @@ def render(prepared, tag, voice):
     for item in prepared['items']:
         name = f'item-{item["rank"]:02}'
         sections = item['sections']
-        if [section['name'] for section in sections] != ['heading', 'summary', 'background', 'why']:
+        expected = ['heading', 'authors', 'summary', 'background', 'why'] if prepared['version'] == 3 else ['heading', 'summary', 'background', 'why']
+        if [section['name'] for section in sections] != expected:
             raise ValueError('Speech sections are missing or out of order')
         section_paths = []
         for section in sections:
@@ -150,7 +151,12 @@ def render(prepared, tag, voice):
             output.setframerate(24000)
             for index, section_path in enumerate(section_paths):
                 if index:
-                    pause = prepared['heading_pause_seconds'] if index == 1 else prepared['section_pause_seconds']
+                    if sections[index]['name'] == 'authors':
+                        pause = prepared['title_author_pause_seconds']
+                    elif sections[index]['name'] == 'summary':
+                        pause = prepared['heading_pause_seconds']
+                    else:
+                        pause = prepared['section_pause_seconds']
                     silence.append({'start': round(position, 3), 'duration': pause})
                     append_silence(output, pause)
                     position += pause
@@ -179,7 +185,7 @@ def render(prepared, tag, voice):
     base = f'https://github.com/{REPOSITORY}/releases/download/{tag}/'
     for item in items:
         item['url'] = base + f'item-{item["rank"]:02}.mp3'
-    return {'version': 2, 'date': prepared['date'], 'source_hash': prepared['source_hash'],
+    return {'version': prepared['version'], 'date': prepared['date'], 'source_hash': prepared['source_hash'],
             'speech_script_hash': prepared['speech_script_hash'], 'content_hash': fingerprint(prepared),
             'voice': 'kokoro-' + VOICE, 'language': 'en-US', 'generated_at': datetime.now(timezone.utc).isoformat(),
             'speech_url': base + 'speech.txt', 'day': {'url': base + 'day.mp3', 'duration': round(duration(combined), 3)}, 'items': items}, folder
@@ -224,7 +230,7 @@ def main():
         script_path = ROOT / 'audio/scripts' / (day['date'] + '.json')
         if script_path.exists():
             script = json.loads(script_path.read_text(encoding='utf-8'))
-            if script != make_script(day, script.get('pronunciations', [])):
+            if script != make_script(day, script.get('pronunciations', []), version=script.get('version')):
                 raise ValueError('Speech script is stale or does not match ' + day['date'])
             scripts[day['date']] = script
     source = CACHE / 'days.json'

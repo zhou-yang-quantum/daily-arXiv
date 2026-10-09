@@ -1,0 +1,103 @@
+{
+  "version": 3,
+  "date": "2026-10-08",
+  "source_hash": "ecf505cbb55cb5db0b7931ef5c0b429e4c97b954cfcc7aaf74af37e0ec81a5f3",
+  "pronunciations": [
+    {
+      "latex": "\\(3+1\\)",
+      "spoken": "three plus one"
+    },
+    {
+      "latex": "\\(D_n\\)",
+      "spoken": "D sub n"
+    },
+    {
+      "latex": "\\(N\\)",
+      "spoken": "capital N"
+    },
+    {
+      "latex": "\\(T/T^\\dagger\\)",
+      "spoken": "T or T dagger"
+    },
+    {
+      "latex": "\\(T\\)",
+      "spoken": "T"
+    },
+    {
+      "latex": "\\(U(1)\\)",
+      "spoken": "U one"
+    },
+    {
+      "latex": "\\(X\\)",
+      "spoken": "X"
+    },
+    {
+      "latex": "\\(Z\\)",
+      "spoken": "Z"
+    },
+    {
+      "latex": "\\([[48,3,3]]\\)",
+      "spoken": "qubit code parameters forty eight, three, three"
+    },
+    {
+      "latex": "\\(\\alpha=\\pi/4\\)",
+      "spoken": "alpha equals pi divided by four"
+    },
+    {
+      "latex": "\\(\\alpha\\)",
+      "spoken": "alpha"
+    },
+    {
+      "latex": "\\(\\eta<1/4\\)",
+      "spoken": "eta is less than one quarter"
+    },
+    {
+      "latex": "\\(\\eta>2-\\sigma\\)",
+      "spoken": "eta is greater than two minus sigma"
+    },
+    {
+      "latex": "\\(\\nu^{-1}\\sim\\sqrt{7/4-\\sigma}\\)",
+      "spoken": "one over nu scales as the square root of the quantity seven quarters minus sigma"
+    },
+    {
+      "latex": "\\(\\nu_i=\\partial p_L/\\partial p_i\\)",
+      "spoken": "nu sub i equals the partial derivative of p sub capital L with respect to p sub i"
+    },
+    {
+      "latex": "\\(\\sigma<7/4\\)",
+      "spoken": "sigma is less than seven quarters"
+    },
+    {
+      "latex": "\\(\\sigma>7/4\\)",
+      "spoken": "sigma is greater than seven quarters"
+    },
+    {
+      "latex": "\\(\\sqrt{n/2}\\)",
+      "spoken": "the square root of the quantity n divided by two"
+    },
+    {
+      "latex": "\\(d_Z\\geq3\\)",
+      "spoken": "d sub Z is greater than or equal to three"
+    },
+    {
+      "latex": "\\(k^2\\)",
+      "spoken": "k squared"
+    },
+    {
+      "latex": "\\(r^{-2-\\sigma}\\)",
+      "spoken": "r raised to the power of the quantity minus two minus sigma"
+    },
+    {
+      "latex": "\\(|111\\rangle\\)",
+      "spoken": "the ket with three ones"
+    },
+    {
+      "latex": "\\[\nZ(\\beta,\\mu)=\\sum_n e^{\\beta\\mu n}Z_n(\\beta).\n\\]",
+      "spoken": "Z of beta and mu equals the sum over n of the exponential of beta times mu times n, multiplied by Z sub n of beta."
+    },
+    {
+      "latex": "\\[\n\\delta p_L\\approx\\sum_i\\nu_i\\,\\delta p_i.\n\\]",
+      "spoken": "delta p sub capital L is approximately the sum over i of nu sub i times delta p sub i."
+    }
+  ]
+}

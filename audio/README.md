@@ -26,8 +26,10 @@ links are omitted from rendering and speech; the footer arXiv link remains.
 The generator checks the source and pronunciation hashes. A changed equation
 reading cannot silently use an old recording. Missing or stale pronunciation
 metadata stops new audio rather than falling back to symbol-by-symbol reading.
-The October 9 test and future daily deliveries use this pipeline; earlier
-recordings are retained until matching new pronunciation companions are supplied.
+October 6–8 have matching pronunciation companions for the improved narration.
+New daily deliveries use the same version, with a title-to-authors pause and
+the tested letter-A pronunciation inside equations. The October 9 recording
+keeps its existing narration version until an explicit refresh is requested.
 
 Native audio playback and Media Session handlers provide play/pause, seeking,
 position, speed, and lock-screen metadata. Headphone previous/next track actions
@@ -39,8 +41,9 @@ player if a browser or embedded app restricts background playback.
 The whole-day recording is the item PCM recordings concatenated in rank order,
 starting with Item 1 and without a daily overview or closing notes. A sleeping
 page does not have to run JavaScript between papers. There are 1.5 seconds of real
-silence between summary, background, and relevance, plus a brief heading pause
-and an item-end pause. Per-item recordings stop naturally at the item end.
+silence between summary, background, and relevance, a 0.75-second pause between
+title and authors, a 0.5-second pause before summary, and an item-end pause.
+Per-item recordings stop naturally at the item end.
 Kokoro is a speech model, not a physics solver: correctness comes from the
 checked English script, and unusual names can still need pronunciation corrections.
 Audio failures leave reading/copy available and do not block text publication.

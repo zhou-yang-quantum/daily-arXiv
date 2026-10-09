@@ -15,7 +15,9 @@ def expressions(day):
                    for match in MATH.finditer(paper[field])})
 
 
-def make_script(day, pronunciations):
+def make_script(day, pronunciations, version=3):
+    if version not in (2, 3):
+        raise ValueError('Unsupported narration version')
     if not isinstance(pronunciations, list):
         raise ValueError('Audio needs an equation pronunciation list')
     found = {}
@@ -33,5 +35,5 @@ def make_script(day, pronunciations):
     expected = set(expressions(day))
     if set(found) != expected:
         raise ValueError('Equation pronunciations must cover every distinct item equation exactly once')
-    return {'version': 2, 'date': day['date'], 'source_hash': audio_source_hash(day),
+    return {'version': version, 'date': day['date'], 'source_hash': audio_source_hash(day),
             'pronunciations': [{'latex': expression, 'spoken': found[expression]} for expression in sorted(found)]}

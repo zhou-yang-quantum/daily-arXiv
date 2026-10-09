@@ -1,0 +1,67 @@
+{
+  "version": 3,
+  "date": "2026-10-06",
+  "source_hash": "2199de5c9457277b112148f540fdc64d301bcd327e5e21156392fdcd7e936cbe",
+  "pronunciations": [
+    {
+      "latex": "$O(\\sqrt{t})$",
+      "spoken": "big O of the square root of t"
+    },
+    {
+      "latex": "\\(L\\)",
+      "spoken": "capital L"
+    },
+    {
+      "latex": "\\(O(T\\operatorname{polylog}(nT/\\epsilon))\\)",
+      "spoken": "big O of T times a polynomial in the logarithm of the ratio n times T to epsilon"
+    },
+    {
+      "latex": "\\(O(\\log\\log t)\\)",
+      "spoken": "big O of the logarithm of the logarithm of t"
+    },
+    {
+      "latex": "\\(O(\\sqrt{t})\\)",
+      "spoken": "big O of the square root of t"
+    },
+    {
+      "latex": "\\(O(nT\\operatorname{polylog}(nT/\\epsilon))\\)",
+      "spoken": "big O of n times T times a polynomial in the logarithm of the ratio n times T to epsilon"
+    },
+    {
+      "latex": "\\(T\\geq1\\)",
+      "spoken": "T is greater than or equal to one"
+    },
+    {
+      "latex": "\\(\\epsilon\\)",
+      "spoken": "epsilon"
+    },
+    {
+      "latex": "\\(\\nu=0.60\\pm0.02\\)",
+      "spoken": "nu equals zero point six zero, plus or minus zero point zero two"
+    },
+    {
+      "latex": "\\(d_A^2\\operatorname{Tr}\\rho_{A_1A_2}^2\\)",
+      "spoken": "d sub A squared times the trace of the square of rho on the joint subsystem A one and A two"
+    },
+    {
+      "latex": "\\(m e^{-cL}\\)",
+      "spoken": "m times the exponential of minus c times capital L"
+    },
+    {
+      "latex": "\\(m\\)",
+      "spoken": "m"
+    },
+    {
+      "latex": "\\(n\\)",
+      "spoken": "n"
+    },
+    {
+      "latex": "\\(z=1.986\\pm0.005\\)",
+      "spoken": "z equals one point nine eight six, plus or minus zero point zero zero five"
+    },
+    {
+      "latex": "\\(z\\)",
+      "spoken": "z"
+    }
+  ]
+}

@@ -94,7 +94,7 @@ def publish(text, token, speech_script=None):
     date = digest["date"]
     count = len(digest["papers"])
     if speech_script is not None:
-        if speech_script != make_script(digest, speech_script.get('pronunciations', [])):
+        if speech_script != make_script(digest, speech_script.get('pronunciations', []), version=speech_script.get('version')):
             raise ValueError('Speech metadata does not match the digest')
     existing = api_request("GET", date, token)
     if existing is not None:

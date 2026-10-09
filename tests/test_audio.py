@@ -1,11 +1,13 @@
 import json
 from pathlib import Path
+import shutil
+import subprocess
 import tempfile
 import unittest
 import wave
 from unittest.mock import patch
 
-from tools.build import audio_source_hash, audio_script_hash, load_audio_index
+from tools.build import ROOT, audio_source_hash, audio_script_hash, load_audio_index
 from tools.generate_audio import fingerprint, concatenate, append_silence, text_chunks
 from tools.speech_text import make_script
 from tools.import_digest import parse_digest
@@ -14,6 +16,12 @@ from test_archive import example_digest
 
 class AudioTests(unittest.TestCase):
     def setUp(self):
+        # Synthetic October 6 fixtures must not pick up that real day's companion.
+        sandbox = tempfile.TemporaryDirectory()
+        self.addCleanup(sandbox.cleanup)
+        root = patch('tools.build.ROOT', Path(sandbox.name))
+        root.start()
+        self.addCleanup(root.stop)
         self.day = parse_digest(example_digest(include_priority=False))
         prefix = 'https://github.com/zhou-yang-quantum/daily-arXiv/releases/download/audio-test/'
         self.audio = {'date': self.day['date'], 'source_hash': audio_source_hash(self.day),
@@ -75,6 +83,35 @@ class AudioTests(unittest.TestCase):
             self.assertEqual(self.read(self.audio)['days'], {})
             self.audio['speech_script_hash'] = audio_script_hash(script)
             self.assertIn(self.day['date'], self.read(self.audio)['days'])
+
+    @unittest.skipUnless(shutil.which('node'), 'Speech text exporter requires Node.js')
+    def test_title_pause_and_letter_a_are_versioned_without_rewriting_prose(self):
+        self.day['papers'][0]['summary'] = 'A useful quantity is $S(AB)$. A result follows.'
+        pronunciations = [{'latex': '$S(AB)$', 'spoken': 'the entropy of A B'}]
+        with tempfile.TemporaryDirectory() as folder:
+            folder = Path(folder)
+            source = folder / 'days.json'
+            source.write_text(json.dumps([self.day]), encoding='utf-8')
+            for version in (2, 3):
+                script = make_script(self.day, pronunciations, version=version)
+                (folder / (self.day['date'] + '.json')).write_text(json.dumps(script), encoding='utf-8')
+                subprocess.run(['node', str(ROOT / 'tools/export_audio.mjs'), str(source), str(folder / 'text'), str(folder)],
+                               check=True, capture_output=True, timeout=60)
+                prepared = json.loads((folder / 'text' / (self.day['date'] + '.json')).read_text(encoding='utf-8'))
+                item = prepared['items'][0]
+                expected = ['heading', 'summary', 'background', 'why']
+                if version == 3:
+                    expected.insert(1, 'authors')
+                    self.assertEqual(prepared['title_author_pause_seconds'], 0.75)
+                    self.assertNotIn('Authors:', item['sections'][0]['text'])
+                    self.assertIn('Authors:', item['sections'][1]['text'])
+                    self.assertIn('A useful quantity is the entropy of eh B. A result follows.', item['text'])
+                else:
+                    self.assertNotIn('title_author_pause_seconds', prepared)
+                    self.assertIn('Authors:', item['sections'][0]['text'])
+                    self.assertIn('the entropy of A B', item['text'])
+                self.assertEqual([section['name'] for section in item['sections']], expected)
+                self.assertEqual(prepared['text'], '\n\n'.join(item['text'] for item in prepared['items']))
 
     def test_day_pcm_is_exactly_item_pcm_and_pauses_are_real_silence(self):
         with tempfile.TemporaryDirectory() as folder:

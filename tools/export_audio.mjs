@@ -9,10 +9,13 @@ const reading = globalThis.DigestReading;
 const [input, output, scriptFolder = fileURLToPath(new URL('../audio/scripts/', import.meta.url))] = process.argv.slice(2);
 const days = JSON.parse(await fs.readFile(input, 'utf8'));
 await fs.mkdir(output, { recursive: true });
-function pronounce(text, substitutions) {
+function pronounce(text, substitutions, robustLetters = false) {
   return reading.plainText(text).replace(reading.mathPattern, expression => {
     if (!substitutions.has(expression)) throw new Error('Missing English pronunciation: ' + expression);
-    return substitutions.get(expression);
+    const spoken = substitutions.get(expression);
+    // In the pinned US phonemizer, ordinary capital A can become an article.
+    // Apply the tested /eɪ/ spelling only to letter A inside math substitutions.
+    return robustLetters && /(?<![A-Za-z])A(?![a-z])/.test(expression) ? spoken.replace(/\bA\b/g, 'eh') : spoken;
   }).replace(/\b(?:QEC|QFT|QLDPC|LDPC|CNOT|CCZ|QCD|SPT|SYK|RG|YM|OTOC)\b/g, word => [...word].join(' '))
     .replace(/\[\[/g, '[ [').replace(/\]\]/g, '] ]');
 }
@@ -20,24 +23,26 @@ for (const day of days) {
   let script;
   try { script = JSON.parse(await fs.readFile(path.join(scriptFolder, day.date + '.json'), 'utf8')); }
   catch (error) { if (error.code === 'ENOENT') continue; throw error; }
-  if (script.version !== 2 || script.date !== day.date) throw new Error('Invalid dated speech script');
+  if (![2, 3].includes(script.version) || script.date !== day.date) throw new Error('Invalid dated speech script');
+  const modern = script.version === 3;
   const substitutions = new Map(script.pronunciations.map(entry => [entry.latex, entry.spoken]));
   const spokenDate = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date(day.date + 'T12:00:00Z'));
   const items = day.papers.map(paper => {
-    const heading = 'arXiv, ' + spokenDate + '. Item ' + paper.rank + '.\n\n' + pronounce(paper.title, substitutions)
-      + '\n\nAuthors: ' + reading.plainText(paper.authors) + '.\n\narXiv number ' + paper.id.split('.').map(part => [...part].join(' ')).join(', point, ');
+    const title = 'arXiv, ' + spokenDate + '. Item ' + paper.rank + '.\n\n' + pronounce(paper.title, substitutions, modern);
+    const authors = 'Authors: ' + reading.plainText(paper.authors) + '.\n\narXiv number ' + paper.id.split('.').map(part => [...part].join(' ')).join(', point, ');
     const sections = [
-      { name: 'heading', text: heading },
-      { name: 'summary', text: 'Summary.\n\n' + pronounce(paper.summary, substitutions) },
-      { name: 'background', text: 'Background and motivation.\n\n' + pronounce(paper.background, substitutions) },
-      { name: 'why', text: 'Why it matters for you.\n\n' + pronounce(paper.why, substitutions) },
+      ...(modern ? [{ name: 'heading', text: title }, { name: 'authors', text: authors }] : [{ name: 'heading', text: title + '\n\n' + authors }]),
+      { name: 'summary', text: 'Summary.\n\n' + pronounce(paper.summary, substitutions, modern) },
+      { name: 'background', text: 'Background and motivation.\n\n' + pronounce(paper.background, substitutions, modern) },
+      { name: 'why', text: 'Why it matters for you.\n\n' + pronounce(paper.why, substitutions, modern) },
     ];
     return { rank: paper.rank, id: paper.id, title: reading.plainText(paper.title), sections,
       text: sections.map(section => section.text).join('\n\n') };
   });
-  const prepared = { version: 2, date: day.date, title: day.title, source_hash: script.source_hash,
+  const prepared = { version: script.version, date: day.date, title: day.title, source_hash: script.source_hash,
     section_pause_seconds: 1.5, heading_pause_seconds: 0.5, item_pause_seconds: 1.5,
     items, text: items.map(item => item.text).join('\n\n') };
+  if (modern) prepared.title_author_pause_seconds = 0.75;
   await fs.writeFile(path.join(output, day.date + '.json'), JSON.stringify(prepared, null, 2) + '\n');
   await fs.writeFile(path.join(output, day.date + '.txt'), prepared.text + '\n');
 }
